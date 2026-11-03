@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState, useCallback, type RefObject } from "react";
-import { CreateStreamForm } from "../components/CreateStreamForm";
 import { CreateStreamDrawer } from "../components/CreateStreamDrawer";
 import { KpiMetricsGrid } from "../components/KpiMetricsGrid";
 import { LiveStreamCard } from "../components/LiveStreamCard";
@@ -52,7 +51,6 @@ export function DashboardPage({ wallet: propWallet }: DashboardPageProps) {
   const [loadingDashboard, setLoadingDashboard] = useState(true);
   const [initialLoading, setInitialLoading] = useState(true);
   const [totalUnfilteredCount, setTotalUnfilteredCount] = useState<number>(0);
-  const CREATE_STREAM_SECTION_ID = "create-stream-section";
 
   const scrollToCreateStream = useCallback(() => {
     setIsCreateOpen(true);

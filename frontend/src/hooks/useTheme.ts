@@ -35,8 +35,8 @@ function getInitialPreference(): ThemePreference {
   return getStoredPreference() ?? "system";
 }
 
-function resolveTheme(preference: ThemePreference): Theme {
-  return preference === "system" ? getSystemTheme() : preference;
+export function resolveTheme(preference: ThemePreference, system: Theme = getSystemTheme()): Theme {
+  return preference === "system" ? system : preference;
 }
 
 function applyTheme(theme: Theme): void {
@@ -68,7 +68,7 @@ export function useTheme(): {
     return () => media.removeEventListener("change", handleChange);
   }, []);
 
-  const theme = resolveTheme(preference);
+  const theme = resolveTheme(preference, systemTheme);
 
   // Apply class and persist whenever the resolved theme changes.
   useEffect(() => {

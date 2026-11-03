@@ -8,13 +8,7 @@ interface CliffMarkerProps {
 }
 
 export function CliffMarker({ startAt, cliffSeconds, durationSeconds, now }: CliffMarkerProps) {
-  if (cliffSeconds === 0 || cliffSeconds === undefined) {
-    return null;
-  }
-
-  const cliffTimestamp = startAt + cliffSeconds;
-  const cliffPercentage = (cliffSeconds / durationSeconds) * 100;
-  const hasReachedCliff = now >= cliffTimestamp;
+  const cliffTimestamp = startAt + (cliffSeconds || 0);
 
   const cliffDate = useMemo(() => {
     return new Date(cliffTimestamp * 1000).toLocaleDateString("en-US", {
@@ -24,6 +18,12 @@ export function CliffMarker({ startAt, cliffSeconds, durationSeconds, now }: Cli
     });
   }, [cliffTimestamp]);
 
+  if (cliffSeconds === 0 || cliffSeconds === undefined) {
+    return null;
+  }
+
+  const cliffPercentage = (cliffSeconds / durationSeconds) * 100;
+  const hasReachedCliff = now >= cliffTimestamp;
   const cliffDaysFromStart = Math.ceil(cliffSeconds / (24 * 3600));
 
   return (
