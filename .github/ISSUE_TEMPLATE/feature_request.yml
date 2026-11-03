@@ -1,25 +1,28 @@
-name: Feature request
-description: Suggest an improvement or new capability for Stellar Stream.
-title: "[Feature]: "
+name: 💡 Feature Request
+description: Propose an enhancement, new streaming curve, wallet integration, or Soroban capability
+labels: ["enhancement", "discussion"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        We welcome ideas for advancing continuous liquidity on Stellar!
   - type: textarea
     id: problem
     attributes:
-      label: Problem
-      description: What user or developer problem should this solve?
+      label: Is your feature request related to a problem or limitation?
+      description: A clear and concise description of the problem or friction point.
+      placeholder: "e.g. Contractors struggle with..."
     validations:
       required: true
   - type: textarea
     id: solution
     attributes:
-      label: Proposed solution
-      description: Describe the change you would like to see.
+      label: Describe the solution you'd like
+      description: How should the feature work, and how does it integrate with Soroban/Stellar primitives?
     validations:
       required: true
   - type: textarea
     id: alternatives
     attributes:
-      label: Alternatives considered
-      description: What other approaches or workarounds have you considered?
-    validations:
-      required: false
+      label: Alternative approaches considered
+      description: Any alternative designs or workarounds you've evaluated.

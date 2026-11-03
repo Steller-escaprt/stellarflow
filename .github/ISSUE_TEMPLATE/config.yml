@@ -1,1 +1,8 @@
-blank_issues_enabled: true
+blank_issues_enabled: false
+contact_links:
+  - name: StellarFlow Security Vulnerability Disclosure
+    url: https://github.com/Steller-escaprt/stellarflow/blob/main/SECURITY.md
+    about: Please report security vulnerabilities privately according to our security policy.
+  - name: Stellar Developer Discord & Community
+    url: https://discord.gg/stellardev
+    about: Join community discussions and Soroban smart contract development channels.
