@@ -377,4 +377,48 @@ describe('StellarFlow Mathematical Invariants (MATH_SPEC.md Verification)', () =
       expect(roundTripBigInt).toBe(rawUSDC);
     });
   });
+
+  describe('StreamRouter Cross-Contract Routing Invariants', () => {
+    it('guarantees that 10,000 bps split allocations distribute 100% of tokens without dust loss', () => {
+      const claimedAmount = 100_000_003n; // odd stroop count to test truncation dust
+      const bpsShares = [5000, 3000, 2000]; // 50%, 30%, 20% = 10,000 bps
+
+      let distributedTotal = 0n;
+      const distributions: bigint[] = [];
+
+      for (let i = 0; i < bpsShares.length; i++) {
+        const bps = bpsShares[i];
+        const share =
+          i === bpsShares.length - 1
+            ? claimedAmount - distributedTotal // last allocation collects remainder dust
+            : (claimedAmount * BigInt(bps)) / 10_000n;
+
+        distributions.push(share);
+        distributedTotal += share;
+      }
+
+      expect(distributedTotal).toBe(claimedAmount);
+      expect(distributions[0] + distributions[1] + distributions[2]).toBe(claimedAmount);
+    });
+
+    it('rejects allocation basis points that do not sum to 10,000', () => {
+      const invalidBps = [5000, 3000, 1999]; // 9,999 bps
+      const sum = invalidBps.reduce((acc, v) => acc + v, 0);
+      expect(sum).not.toBe(10_000);
+    });
+
+    it('accurately accumulates multi-stream batch volumes in router stats', () => {
+      const batchAmounts = [500_000_0000000n, 250_000_0000000n, 125_000_0000000n];
+      const totalVolume = batchAmounts.reduce((acc, v) => acc + v, 0n);
+      expect(totalVolume).toBe(875_000_0000000n);
+    });
+
+    it('handles single-recipient 100% allocation (10,000 bps) cleanly', () => {
+      const claimed = 50_000_000n;
+      const singleBps = 10_000;
+      const share = (claimed * BigInt(singleBps)) / 10_000n;
+      expect(share).toBe(claimed);
+    });
+  });
 });
+

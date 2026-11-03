@@ -217,3 +217,27 @@ records the new version by calling `set_contract_version()`.
    with the new version number. The setter rejects downgrades and versions
    newer than the running build supports.
 4. Update the "currently `N`" note in this document.
+
+---
+
+## StreamRouter Companion Contract ABI
+
+`StreamRouterContract` (`contracts/src/router.rs`) provides atomic batch stream dispatch and split-routing via cross-contract calls into `StellarStreamContract`.
+
+### Storage Keys (`RouterDataKey`)
+
+| Key | Value | Persistence | Description |
+|:---|:---|:---:|:---|
+| `Admin` | `Address` | Instance | Stored at `initialize`; governs administrative router functions. |
+| `DefaultStreamContract` | `Address` | Instance | Default `StellarStreamContract` target address. |
+| `Stats` | `RouterStats` | Instance | Running counters: `total_batches_routed`, `total_streams_routed`, and `total_volume_routed`. |
+
+### Public Methods
+
+| Method | Parameters | Returns | Description |
+|:---|:---|:---:|:---|
+| `initialize` | `admin: Address, default_stream_contract: Address` | `()` | One-time initialization of router instance keys. |
+| `batch_create_streams` | `sender: Address, stream_contract: Address, streams: Vec<BatchStreamParam>` | `Vec<u64>` | Atomically executes multiple stream creations via cross-contract calls to `StreamEscrowClient`. |
+| `split_claim` | `stream_contract: Address, stream_id: u64, recipient: Address, token: Address, allocations: Vec<SplitAllocation>` | `i128` | Claims vested tokens and distributes them across recipient destinations according to basis points. |
+| `get_stats` | `()` | `RouterStats` | Returns global router routing metrics and volume counters. |
+

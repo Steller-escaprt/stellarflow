@@ -5,6 +5,7 @@ mod errors;
 use crate::templates::{StreamTemplate, TemplateCreated};
 use errors::ContractError;
 pub mod dao;
+pub mod router;
 pub mod templates;
 use soroban_sdk::{
     contract, contractimpl, contracttype, symbol_short, token::Client as TokenClient, Address, Env,
@@ -1541,3 +1542,6 @@ mod test;
 
 #[cfg(test)]
 mod claimable_events_test;
+
+#[cfg(test)]
+mod router_test;
