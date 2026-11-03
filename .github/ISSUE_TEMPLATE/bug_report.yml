@@ -1,48 +1,41 @@
-name: Bug report
-description: Report a reproducible problem in Stellar Stream.
-title: "[Bug]: "
+name: 🐛 Bug Report
+description: Report an issue, broken transaction, or unexpected behavior in StellarFlow
+labels: ["bug", "triage"]
 body:
-  - type: textarea
-    id: description
+  - type: markdown
     attributes:
-      label: Description
-      description: What happened, and which part of the app is affected?
+      value: |
+        Thanks for taking the time to report a bug! Please ensure you are not submitting security vulnerabilities here; report security issues via SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: StellarFlow Version / Environment
+      description: What version or environment are you running (e.g. Testnet, Localhost, Vercel preview)?
+      placeholder: "e.g. v1.0.0 on Stellar Testnet"
     validations:
       required: true
   - type: textarea
-    id: steps
+    id: what-happened
     attributes:
-      label: Steps to reproduce
-      description: List the exact steps needed to reproduce the issue.
+      label: What happened?
+      description: Describe the bug with clear steps to reproduce.
       placeholder: |
-        1. Go to ...
-        2. Click ...
-        3. See ...
+        1. Connected Freighter wallet on Testnet
+        2. Configured stream with 100 USDC
+        3. Clicked 'Confirm & Stream'
+        4. Error message encountered: ...
     validations:
       required: true
   - type: textarea
     id: expected
     attributes:
-      label: Expected behavior
-      description: What should have happened?
+      label: What did you expect to happen?
+      description: What should have occurred instead?
     validations:
       required: true
   - type: textarea
-    id: actual
+    id: logs
     attributes:
-      label: Actual behavior
-      description: What happened instead?
-    validations:
-      required: true
-  - type: textarea
-    id: environment
-    attributes:
-      label: Environment
-      description: Browser, OS, Node version, wallet, network, or deployment details.
-      placeholder: |
-        OS:
-        Browser:
-        Node:
-        Network:
-    validations:
-      required: true
+      label: Relevant Log Output or Transaction Hashes
+      description: Paste any browser console errors, Soroban RPC responses, or Stellar.Expert transaction URLs.
+      render: shell
