@@ -8,7 +8,9 @@ const STORAGE_KEY = "stellar-flow-theme";
 
 function getStoredPreference(): ThemePreference | null {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored =
+      localStorage.getItem(STORAGE_KEY) ??
+      localStorage.getItem("stellar-stream-theme");
     if (stored === "light" || stored === "dark" || stored === "system") {
       return stored;
     }

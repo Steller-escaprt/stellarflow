@@ -15,7 +15,7 @@
       (function () {
         var theme = "light";
         try {
-          var stored = localStorage.getItem('stellar-flow-theme');
+          var stored = localStorage.getItem('stellar-flow-theme') || localStorage.getItem('stellar-stream-theme');
           if (stored === 'dark' || stored === 'light') {
             theme = stored;
           } else if (
