@@ -305,13 +305,13 @@ function formatStroopsAsXlm(stroops: number): string {
 
 function createStreamOperation(contractId: string, input: StreamInput, startAt: number) {
   const endAt = startAt + input.durationSeconds;
-  const fakeToken = contractId;
+  const tokenAddress = contractId;
 
   return new Contract(contractId).call(
     "create_stream",
     new Address(input.sender).toScVal(),
     new Address(input.recipient).toScVal(),
-    new Address(fakeToken).toScVal(),
+    new Address(tokenAddress).toScVal(),
     nativeToScVal(input.totalAmount, { type: "i128" }),
     nativeToScVal(startAt, { type: "u64" }),
     nativeToScVal(endAt, { type: "u64" }),
