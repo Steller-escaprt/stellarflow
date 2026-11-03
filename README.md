@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Stellar Network](https://img.shields.io/badge/Stellar-Testnet-7D00FF.svg)](https://stellar.org)
 [![Soroban](https://img.shields.io/badge/Soroban-Smart%20Contracts-black.svg)](https://soroban.stellar.org)
-[![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)](https://github.com/escaprt/stellarflow)
+[![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)](https://github.com/Steller-escaprt/stellarflow)
 [![Frontend Tests](https://img.shields.io/badge/Frontend%20Tests-272%20passing-success.svg)](frontend/)
 [![Backend Tests](https://img.shields.io/badge/Backend%20Tests-89%20passing-success.svg)](backend/)
 
@@ -143,7 +143,7 @@ For full implementation specifications, see [PROPOSAL.md](PROPOSAL.md).
 
 ### 1. Clone & Install
 ```bash
-git clone https://github.com/escaprt/stellarflow.git
+git clone https://github.com/Steller-escaprt/stellarflow.git
 cd stellarflow
 
 # Install root, backend, and frontend dependencies

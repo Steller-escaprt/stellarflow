@@ -21,7 +21,7 @@ The goal is that this sequence works on a fresh clone with no pre-existing
 `node_modules`, cached artifacts, or locally-edited lockfiles:
 
 ```bash
-git clone https://github.com/escaprt/stellarflow.git
+git clone https://github.com/Steller-escaprt/stellarflow.git
 cd stellarflow/backend
 node --version          # must be >= 22 (see below)
 npm ci                  # clean install, no --legacy-peer-deps needed

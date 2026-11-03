@@ -1,7 +1,7 @@
 # StellarFlow Frontend Architecture & Design Specification
 
 **Date**: 2026-10-31  
-**Project**: StellarFlow (`escaprt/stellarflow`)  
+**Project**: StellarFlow (`Steller-escaprt/stellarflow`)  
 **Scope**: Frontend Rebranding, Modern DeFi Glassmorphic Design System, and Real-Time Stream Lifecycle UX
 
 ---

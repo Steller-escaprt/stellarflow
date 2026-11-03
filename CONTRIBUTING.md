@@ -18,7 +18,7 @@ Follow these steps to go from zero to a running local environment with passing t
 
 ### Step-by-Step
 
-1. **Fork the repository** — Click the **Fork** button at the top of the [StellarFlow repo](https://github.com/escaprt/stellarflow) on GitHub.
+1. **Fork the repository** — Click the **Fork** button at the top of the [StellarFlow repo](https://github.com/Steller-escaprt/stellarflow) on GitHub.
 
 2. **Clone your fork**
    ```bash

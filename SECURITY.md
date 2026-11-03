@@ -17,7 +17,7 @@ We take the security of StellarFlow seriously. If you believe you have found a s
 
 ### Private Reporting Process
 
-Please use the **[GitHub Security Advisory](https://github.com/escaprt/stellarflow/security/advisories/new)** form to report vulnerabilities privately. 
+Please use the **[GitHub Security Advisory](https://github.com/Steller-escaprt/stellarflow/security/advisories/new)** form to report vulnerabilities privately. 
 
 This is the preferred method as it allows us to communicate with you privately and coordinate a fix before public disclosure.
 

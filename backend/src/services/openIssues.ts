@@ -11,7 +11,7 @@ export interface OpenIssue {
 
 export async function fetchOpenIssues(): Promise<OpenIssue[]> {
   try {
-    const response = await fetch("https://api.github.com/repos/escaprt/stellarflow/issues?state=open", {
+    const response = await fetch("https://api.github.com/repos/Steller-escaprt/stellarflow/issues?state=open", {
       headers: {
         "Accept": "application/vnd.github.v3+json",
         "User-Agent": "StellarFlow-Backend"

@@ -3,7 +3,7 @@
 ### Transforming Corporate Payroll & Digital Value Transfer on the Stellar Blockchain
 
 - **Author & Lead Maintainer:** `escaprt` (<escaprtyu@gmail.com>)
-- **Repository:** [https://github.com/escaprt/stellarflow](https://github.com/escaprt/stellarflow)
+- **Repository:** [https://github.com/Steller-escaprt/stellarflow](https://github.com/Steller-escaprt/stellarflow)
 - **Target Network:** Stellar (Mainnet & Testnet)
 - **Contract Deployment (Testnet):** [`CCJW2RLIN4MQQ4DAJMMR3F5QPDA6QYTKXJMEVI3XOTDBTBCLBB553J74`](https://stellar.expert/explorer/testnet/contract/CCJW2RLIN4MQQ4DAJMMR3F5QPDA6QYTKXJMEVI3XOTDBTBCLBB553J74)
 - **Status:** Production-Ready MVP & Protocol Evolution Proposal
@@ -250,7 +250,7 @@ StellarFlow is licensed under the permissive **MIT License** and is built strict
 - **Soroban Smart Contract Standards:** Standard Rust and Soroban SDK interfaces.
 - **Stellar Ecosystem Proposals:** Built to adhere to SEP-10 (Authentication), SEP-41 (Token Interface), and SEP-24 (Interactive Deposit & Withdrawal).
 - **Public Governance:** All protocol improvements, security advisories, and architecture decision records (ADRs) are openly maintained at:
-  [https://github.com/escaprt/stellarflow](https://github.com/escaprt/stellarflow)
+  [https://github.com/Steller-escaprt/stellarflow](https://github.com/Steller-escaprt/stellarflow)
 
 ---
 
@@ -259,3 +259,4 @@ StellarFlow is licensed under the permissive **MIT License** and is built strict
 StellarFlow unlocks continuous liquidity for the global digital economy. By combining the speed, micro-fees, and global anchor infrastructure of Stellar with the expressive power of Soroban smart contracts, StellarFlow transforms how organizations compensate talent, manage contractor risk, and transfer value.
 
 We invite the Stellar Development Foundation (SDF), the Stellar Community Fund (SCF), enterprises, and open-source builders to join us in establishing StellarFlow as the premier continuous finance protocol.
+
