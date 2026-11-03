@@ -164,3 +164,4 @@ export function SettingsWindow({ theme, onToggleTheme }: SettingsWindowProps) {
     </div>
   );
 }
+
