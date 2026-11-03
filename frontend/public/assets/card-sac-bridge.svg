@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad5" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E1B4B" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="450" fill="url(#bgGrad5)" rx="16" />
+
+  <!-- Left: Classic Stellar Asset -->
+  <rect x="100" y="140" width="220" height="170" rx="16" fill="#1E293B" stroke="#4F46E5" stroke-width="2" />
+  <circle cx="210" cy="190" r="28" fill="#4F46E5" fill-opacity="0.3" stroke="#6366F1" stroke-width="2" />
+  <text x="210" y="198" fill="#FFFFFF" font-family="sans-serif" font-size="20" font-weight="bold" text-anchor="middle">★</text>
+  <text x="210" y="240" fill="#E2E8F0" font-family="monospace" font-size="14" font-weight="bold" text-anchor="middle">CLASSIC ASSET</text>
+  <text x="210" y="265" fill="#94A3B8" font-family="monospace" font-size="11" text-anchor="middle">SEP-0041 Trustlines</text>
+  <text x="210" y="285" fill="#818CF8" font-family="monospace" font-size="11" text-anchor="middle">Native XLM / USDC</text>
+
+  <!-- Center Bridge Flow -->
+  <line x1="330" y1="225" x2="470" y2="225" stroke="#A855F7" stroke-width="4" stroke-dasharray="8,6" />
+  <rect x="365" y="195" width="70" height="60" rx="12" fill="#7C3AED" stroke="#C084FC" stroke-width="1.5" />
+  <text x="400" y="222" fill="#FFFFFF" font-family="monospace" font-size="10" font-weight="bold" text-anchor="middle">SAC</text>
+  <text x="400" y="240" fill="#E9D5FF" font-family="monospace" font-size="9" text-anchor="middle">BRIDGE</text>
+
+  <!-- Right: Soroban Smart Contract Token -->
+  <rect x="480" y="140" width="220" height="170" rx="16" fill="#1E293B" stroke="#A855F7" stroke-width="2" />
+  <circle cx="590" cy="190" r="28" fill="#7C3AED" fill-opacity="0.3" stroke="#A855F7" stroke-width="2" />
+  <text x="590" y="198" fill="#FFFFFF" font-family="sans-serif" font-size="20" font-weight="bold" text-anchor="middle">⚡</text>
+  <text x="590" y="240" fill="#E2E8F0" font-family="monospace" font-size="14" font-weight="bold" text-anchor="middle">SOROBAN TOKEN</text>
+  <text x="590" y="265" fill="#94A3B8" font-family="monospace" font-size="11" text-anchor="middle">WASM Contract Token</text>
+  <text x="590" y="285" fill="#C084FC" font-family="monospace" font-size="11" text-anchor="middle">Real-time Stream Engine</text>
+
+  <text x="400" y="90" fill="#F3E8FF" font-family="monospace" font-size="15" font-weight="bold" text-anchor="middle">STELLAR ASSET CONTRACT (SAC) PROTOCOL</text>
+  <text x="400" y="380" fill="#DDD6FE" font-family="sans-serif" font-size="14" text-anchor="middle">Seamless bridging of classic assets directly into Soroban streaming escrow</text>
+</svg>

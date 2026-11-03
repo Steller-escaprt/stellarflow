@@ -1504,3 +1504,69 @@ input {
     border-radius: 8px;
   }
 }
+
+/* ── Retro OS Desktop & Window Design System (Deblun OS Inspired) ── */
+:root {
+  --color-border-ui: rgba(0, 0, 0, 0.12);
+  --color-os-bg: #F4F3EF;
+  --color-os-panel: rgba(255, 255, 255, 0.88);
+  --color-os-window: #ffffff;
+}
+
+.dark {
+  --color-border-ui: rgba(255, 255, 255, 0.08);
+  --color-os-bg: #0C0D12;
+  --color-os-panel: rgba(18, 20, 29, 0.85);
+  --color-os-window: #13151F;
+}
+
+.border_ui {
+  border: 1px solid var(--color-border-ui);
+}
+
+.border_ui_b {
+  border-bottom: 1px solid var(--color-border-ui);
+}
+
+.border_ui_t {
+  border-top: 1px solid var(--color-border-ui);
+}
+
+.border_ui_r {
+  border-right: 1px solid var(--color-border-ui);
+}
+
+.border_ui_l {
+  border-left: 1px solid var(--color-border-ui);
+}
+
+@keyframes retro-blink {
+  0%, 49% {
+    opacity: 1;
+  }
+  50%, 100% {
+    opacity: 0;
+  }
+}
+
+.animate-cursor {
+  display: inline-block;
+  animation: retro-blink 1s infinite;
+}
+
+/* Custom technical scrollbar */
+.os-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.os-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.os-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-border-ui);
+  border-radius: 3px;
+}
+.os-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(123, 97, 255, 0.4);
+}
+
