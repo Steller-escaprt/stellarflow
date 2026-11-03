@@ -11,26 +11,30 @@ function AppContent() {
 
   const getWindowFromPath = (path: string): WindowId => {
     switch (path) {
-      case "/projects":
       case "/streams":
-        return "projects";
-      case "/terminal":
-        return "terminal";
-      case "/notes":
-        return "notes";
+      case "/projects":
+        return "streams";
+      case "/vesting":
       case "/playground":
-        return "playground";
+        return "vesting";
       case "/contract":
         return "contract";
+      case "/payroll":
+      case "/notes":
+        return "payroll";
+      case "/claims":
+      case "/recipient":
+        return "claims";
+      case "/architecture":
       case "/skills":
-        return "skills";
+        return "architecture";
+      case "/terminal":
+        return "terminal";
       case "/settings":
         return "settings";
       case "/sender":
       case "/my-streams":
         return "sender";
-      case "/recipient":
-        return "recipient";
       case "/":
       default:
         return "home";

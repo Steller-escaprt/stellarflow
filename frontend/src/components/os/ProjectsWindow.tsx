@@ -99,7 +99,7 @@ export function ProjectsWindow({
       <div className="border_ui_b pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
-            /projects — PROTOCOL ARCHITECTURE &amp; STREAMS
+            /streams — PROTOCOL ARCHITECTURE &amp; STREAMS
           </h2>
           <p className="text-[11px] text-gray-500 font-sans mt-0.5">
             Explore live streaming escrows, architectural pillars, and Soroban WASM deployments.
@@ -215,3 +215,4 @@ export function ProjectsWindow({
     </div>
   );
 }
+

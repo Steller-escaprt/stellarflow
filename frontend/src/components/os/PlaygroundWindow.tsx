@@ -288,3 +288,4 @@ export function PlaygroundWindow({ walletAddress }: { walletAddress: string | nu
     </div>
   );
 }
+
