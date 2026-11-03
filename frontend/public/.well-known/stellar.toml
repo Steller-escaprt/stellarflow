@@ -1,0 +1,52 @@
+# ==============================================================================
+# StellarFlow Protocol Discovery Document (SEP-0001)
+# ==============================================================================
+# Standard: SEP-0001 (https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0001.md)
+# Network: Stellar Testnet (Protocol 22) / Stellar Mainnet Ready
+
+VERSION="2.0.0"
+NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
+HORIZON_URL="https://horizon-testnet.stellar.org"
+
+# Organization Information
+[DOCUMENTATION]
+ORG_NAME="StellarFlow Protocol"
+ORG_DBA="StellarFlow"
+ORG_URL="https://stellarflow-u5zb.vercel.app"
+ORG_LOGO="https://stellarflow-u5zb.vercel.app/icon-512x512.png"
+ORG_DESCRIPTION="Real-time continuous payment streaming and linear token vesting escrow protocol on Soroban Protocol 22."
+ORG_PHYSICAL_ADDRESS="Decentralized Autonomous Organization"
+ORG_OFFICIAL_EMAIL="contact@stellarflow.finance"
+ORG_SUPPORT_EMAIL="support@stellarflow.finance"
+ORG_GITHUB="https://github.com/Steller-escaprt/stellarflow"
+
+# Protocol Principals & Key Maintainers
+[[PRINCIPALS]]
+NAME="escaprt"
+EMAIL="escaprtyu@gmail.com"
+GITHUB="escaprt"
+
+# Deployed Smart Contracts on Soroban
+[[CONTRACTS]]
+ID="CCJW2RLIN4MQQ4DAJMMR3F5QPDA6QYTKXJMEVI3XOTDBTBCLBB553J74"
+NAME="StreamEscrow"
+NETWORK="testnet"
+DESCRIPTION="Soroban WASM escrow contract managing real-time per-second token release, linear vesting curves, cliff evaluation, and atomic cancellation refunds."
+EXPLORER="https://stellar.expert/explorer/testnet/contract/CCJW2RLIN4MQQ4DAJMMR3F5QPDA6QYTKXJMEVI3XOTDBTBCLBB553J74"
+
+# Supported Classic & SAC Bridged Currencies
+[[CURRENCIES]]
+CODE="USDC"
+ISSUER="GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"
+STATUS="testnet"
+DISPLAY_DECIMALS=7
+NAME="USD Coin (Testnet)"
+DESC="Circle USD Coin bridged via Stellar Asset Contract (SEP-41 SAC) for programmatic continuous payroll."
+
+[[CURRENCIES]]
+CODE="XLM"
+STATUS="live"
+NATIVE=true
+DISPLAY_DECIMALS=7
+NAME="Lumen"
+DESC="Native asset of the Stellar network."

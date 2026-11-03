@@ -244,19 +244,72 @@ flowchart LR
 
 ---
 
-## 8. Open-Source Commitment & Governance
+## 8. Stellar Community Fund (SCF) Tier-2 Grant Request & Itemized Budget
+
+StellarFlow is requesting a **Tier-2 Build Grant of $45,000 USD** (payable in USDC via SEP-41 SAC contract on Stellar) to transition the protocol from its operational Testnet deployment to a battle-tested, audited, multi-contract Mainnet financial infrastructure.
+
+### 8.1 Itemized Budget Allocation
+
+| Budget Bucket | Allocation ($) | Percentage | Key Deliverables & Objective |
+| :--- | :---: | :---: | :--- |
+| **1. Smart Contract Security Audit & Formal Verification** | **$16,000** | 35.6% | Comprehensive third-party security audit of `stream_escrow.wasm` and `stream_router.wasm` by a verified Soroban security firm. Includes formal mathematical verification of 128-bit linear vesting math, cancellation refund invariants, and reentrancy resistance. |
+| **2. Gasless Relayer & CAP-15 Fee-Bump Sponsorship** | **$9,000** | 20.0% | Development and operational capitalization of the StellarFlow sponsored transaction relayer. Wraps Soroban `withdraw` invocations in CAP-15 fee-bump envelopes, enabling zero-balance contractors to claim salaries with 0 XLM. |
+| **3. Composable Stream Router & Multi-Hop Splits** | **$10,000** | 22.2% | Deployment of `StreamRouter` companion contract enabling atomic stream splitting (e.g. 80% to contractor, 20% to tax withholding vault) and cross-contract routing into Soroban DEX liquidity pools. |
+| **4. Developer SDK, NPM CLI & Passkey Accounts** | **$6,000** | 13.3% | Publication of `@stellarflow/sdk` and `stellarflow-cli` on npm. Implementation of WebAuthn Passkey biometric authentication via Soroban custom account abstraction. |
+| **5. High-Availability RPC & Indexer Infrastructure** | **$4,000** | 8.9% | Hosting for dedicated Soroban RPC endpoints, SQLite/PostgreSQL failover clusters, and real-time WebSocket ledger event synchronizers with 99.9% uptime SLA. |
+| **TOTAL REQUESTED** | **$45,000** | **100%** | **Full Protocol Mainnet Readiness & Ecosystem Tooling** |
+
+### 8.2 Milestone Tranche Release Schedule
+
+```mermaid
+flowchart LR
+    T1["Tranche 1: $15,000<br>Formal Audit Kickoff & StreamRouter"] --> T2["Tranche 2: $18,000<br>Gasless Relayer & Passkey Module"]
+    T2 --> T3["Tranche 3: $12,000<br>Mainnet Launch & SDK Release"]
+```
+
+- **Tranche 1 ($15,000 — Month 1):**
+  - Contract code freeze and submission to security auditing firm.
+  - Testnet deployment of companion `StreamRouter` contract executing atomic cross-contract calls.
+  - Published mathematical specification (`MATH_SPEC.md`) and 300+ invariant unit tests.
+- **Tranche 2 ($18,000 — Month 2):**
+  - Live deployment of CAP-15 gasless fee-bump relayer backend service.
+  - WebAuthn Passkey integration for biometric wallet authentication.
+  - Remediation of all audit findings with published third-party verification report.
+- **Tranche 3 ($12,000 — Month 3):**
+  - Production deployment of audited contracts to Stellar Public Network (Mainnet).
+  - Publication of `@stellarflow/sdk` and `@stellarflow/cli` to npm.
+  - Verified SEP-1 (`stellar.toml`) and SEP-24 test anchor off-ramp integration.
+
+---
+
+## 9. Fix-Log & Regression Testing Framework
+
+To ensure institutional stability, StellarFlow enforces a strict regression prevention policy. Every bug remediation is accompanied by targeted automated tests before merge:
+
+| Incident / Ticket | Root Cause Identified | Engineering Remediation | Automated Regression Test |
+| :--- | :--- | :--- | :--- |
+| **SEC-01: WebSocket Protocol Smuggling** | Insecure plain `ws://` schema fallback in production client | Implemented dynamic protocol resolution: enforced `wss://` when `window.location.protocol === 'https:'` | `frontend/src/services/api.test.ts` (WebSocket URL protocol suite) |
+| **BLD-02: Dependency Peer Resolution** | Storybook 10 peer conflict on Vite 8 & React 18 | Removed legacy Storybook devDependencies; aligned `@types/react-dom` to v18; added `--legacy-peer-deps` | `package.json` verification & clean `npm run build` CI gate |
+| **UI-03: React Hook Ordering Violation** | `useMemo` declared after conditional return in `CliffMarker.tsx` | Moved date formatting `useMemo` above conditional guard | `frontend/src/components/CliffMarker.test.tsx` |
+| **NET-04: Theme Deserialization Blank Screen** | Uncaught `localStorage` access on restricted browsers | Implemented `try/catch` fallback in `useTheme` defaulting safely to system dark | `frontend/src/hooks/useTheme.test.ts` |
+| **STX-05: State Archival / TTL Risk** | Soroban instance storage expiration on inactive streams | Added automated `extend_ttl` calls in smart contract state transitions | `contracts/stream_escrow/src/test.rs` (TTL extension test) |
+
+---
+
+## 10. Open-Source Commitment & Governance
 
 StellarFlow is licensed under the permissive **MIT License** and is built strictly with open standards:
 - **Soroban Smart Contract Standards:** Standard Rust and Soroban SDK interfaces.
-- **Stellar Ecosystem Proposals:** Built to adhere to SEP-10 (Authentication), SEP-41 (Token Interface), and SEP-24 (Interactive Deposit & Withdrawal).
+- **Stellar Ecosystem Proposals:** Adheres to SEP-0001 (Discovery), SEP-0010 (Web Authentication), SEP-0041 (Token Interface), and SEP-0024 (Interactive Deposit & Withdrawal).
 - **Public Governance:** All protocol improvements, security advisories, and architecture decision records (ADRs) are openly maintained at:
   [https://github.com/Steller-escaprt/stellarflow](https://github.com/Steller-escaprt/stellarflow)
 
 ---
 
-## 9. Conclusion
+## 11. Conclusion
 
 StellarFlow unlocks continuous liquidity for the global digital economy. By combining the speed, micro-fees, and global anchor infrastructure of Stellar with the expressive power of Soroban smart contracts, StellarFlow transforms how organizations compensate talent, manage contractor risk, and transfer value.
 
 We invite the Stellar Development Foundation (SDF), the Stellar Community Fund (SCF), enterprises, and open-source builders to join us in establishing StellarFlow as the premier continuous finance protocol.
+
 
