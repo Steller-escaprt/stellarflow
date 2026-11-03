@@ -1,0 +1,361 @@
+# StellarFlow Contract Event Schema
+
+This document describes every event emitted by the StellarFlow Soroban contract
+(`contracts/src/lib.rs`). The indexer worker (`backend/src/services/indexer.ts`)
+reads these events from Stellar RPC and writes them to the SQLite `stream_events`
+table for the frontend to display.
+
+---
+
+## Overview
+
+### Event Topics
+
+Every event is published with a two-symbol topic tuple:
+
+```
+(Symbol("Stream"), Symbol("<EventName>"))
+```
+
+The indexer matches on `topic[1]` (the event name) to dispatch to the correct
+handler.
+
+### Mandatory Base Fields
+
+**All** StellarFlow events carry these three fields regardless of type:
+
+| Field       | Type      | Description                                                       |
+|-------------|-----------|-------------------------------------------------------------------|
+| `stream_id` | `u64`     | Numeric ID of the stream this event belongs to.                   |
+| `actor`     | `Address` | On-chain address of the party who triggered the event.            |
+| `timestamp` | `u64`     | Ledger close time in Unix seconds at the moment of emission.      |
+
+Additional fields are event-specific and documented in each section below.
+
+---
+
+## Events
+
+### StreamCreated
+
+**Topic:** `("Stream", "Created")`  
+**Triggered by:** `create_stream()`, `create_split_stream()`  
+**Actor:** The sender who funded the stream.
+
+| Field           | Type                         | Description                                               |
+|-----------------|------------------------------|-----------------------------------------------------------|
+| `stream_id`     | `u64`                        | Unique stream identifier.                                 |
+| `actor`         | `Address`                    | Sender address (same as `sender` field).                  |
+| `timestamp`     | `u64`                        | Ledger close time when the stream was created.            |
+| `sender`        | `Address`                    | Account that funded the stream.                           |
+| `recipient`     | `Address`                    | Account entitled to claim tokens.                         |
+| `token`         | `Address`                    | Contract address of the streamed token.                   |
+| `token_symbol`  | `String`                     | Symbol of the token (e.g. `"USDC"`).                     |
+| `total_amount`  | `i128`                       | Total tokens locked in the stream (in stroops).           |
+| `start_time`    | `u64`                        | Unix timestamp when vesting begins.                       |
+| `end_time`      | `u64`                        | Unix timestamp when vesting ends.                         |
+| `cliff_seconds` | `u64`                        | Seconds after `start_time` before any tokens vest.        |
+| `metadata`      | `Option<Map<String,String>>` | Optional key-value metadata attached to the stream.       |
+
+**Indexer mapping:** event type `"created"`, amount = `total_amount`, metadata includes `recipient`, `token`, `startTime`, `endTime`.
+
+---
+
+### StreamClaimed
+
+**Topic:** `("Stream", "Claimed")`  
+**Triggered by:** `claim()`  
+**Actor:** The recipient performing the claim.
+
+| Field            | Type      | Description                                                   |
+|------------------|-----------|---------------------------------------------------------------|
+| `stream_id`      | `u64`     | Stream identifier.                                            |
+| `actor`          | `Address` | Recipient address (same as `recipient` field).                |
+| `timestamp`      | `u64`     | Ledger close time when the claim occurred.                    |
+| `recipient`      | `Address` | Account that received the tokens.                             |
+| `amount`         | `i128`    | Tokens transferred in this claim (in stroops).                |
+| `claimed_amount` | `i128`    | Cumulative total claimed after this operation (in stroops).   |
+
+**Indexer mapping:** event type `"claimed"`, amount = `amount`, metadata includes `claimed_amount`.
+
+> **Note:** When a claim causes `claimed_amount >= total_amount`, a `StreamCompleted`
+> event is also emitted in the same transaction immediately after `StreamClaimed`.
+
+---
+
+### StreamCompleted
+
+**Topic:** `("Stream", "Completed")`  
+**Triggered by:** `claim()` — emitted only when the final claim fully drains the stream.  
+**Actor:** The recipient whose claim completed the stream.
+
+| Field          | Type      | Description                                               |
+|----------------|-----------|-----------------------------------------------------------|
+| `stream_id`    | `u64`     | Stream identifier.                                        |
+| `actor`        | `Address` | Recipient who made the completing claim.                  |
+| `timestamp`    | `u64`     | Ledger close time when completion was reached.            |
+| `total_amount` | `i128`    | Total amount that was streamed (in stroops).              |
+
+**Indexer mapping:** event type `"completed"`, amount = `total_amount`.
+
+---
+
+### ClaimThrottled *(new — emitted by `claim`, #681)*
+
+**Topic:** `("Stream", "Throttled")`
+**Triggered by:** `claim()` — emitted when a claim is rejected because the
+stream's `min_claim_interval_seconds` has not elapsed since the last claim.
+The claim reverts with `ClaimTooFrequent`.
+**Actor:** The recipient whose claim attempt was rejected.
+
+| Field                     | Type      | Description                                                  |
+|---------------------------|-----------|--------------------------------------------------------------|
+| `stream_id`               | `u64`     | Stream identifier.                                           |
+| `actor`                   | `Address` | Recipient whose claim was rejected.                          |
+| `timestamp`               | `u64`     | Ledger close time of the rejected attempt.                   |
+| `next_allowed_claim_time` | `u64`     | Earliest timestamp at which the next claim will be accepted. |
+
+**Indexer mapping:** no DB row (failed transactions are not indexed).
+
+---
+
+### StreamCanceled
+
+**Topic:** `("Stream", "Canceled")`  
+**Triggered by:** `cancel()`  
+**Actor:** The sender who canceled the stream.
+
+| Field             | Type      | Description                                                        |
+|-------------------|-----------|--------------------------------------------------------------------|
+| `stream_id`       | `u64`     | Stream identifier.                                                 |
+| `actor`           | `Address` | Sender address (same as `sender` field).                           |
+| `timestamp`       | `u64`     | Ledger close time when the cancellation was recorded.              |
+| `sender`          | `Address` | Account that canceled the stream.                                  |
+| `refunded_amount` | `i128`    | Unvested tokens refunded to the sender (in stroops). May be `0`.   |
+
+**Indexer mapping:** event type `"canceled"`, amount = `refunded_amount`.
+
+---
+
+### StreamPaused
+
+**Topic:** `("Stream", "Paused")`  
+**Triggered by:** `pause_stream()`  
+**Actor:** The sender who paused the stream.
+
+| Field       | Type      | Description                                                  |
+|-------------|-----------|--------------------------------------------------------------|
+| `stream_id` | `u64`     | Stream identifier.                                           |
+| `actor`     | `Address` | Sender address (same as `sender` field).                     |
+| `timestamp` | `u64`     | Ledger close time when the pause was recorded.               |
+| `sender`    | `Address` | Account that paused the stream.                              |
+| `paused_at` | `u64`     | Ledger close time at which vesting was frozen (Unix seconds).|
+
+**Indexer mapping:** event type `"paused"`, metadata includes `paused_at`.
+
+---
+
+### StreamResumed
+
+**Topic:** `("Stream", "Resumed")`  
+**Triggered by:** `resume_stream()`  
+**Actor:** The sender who resumed the stream.
+
+| Field        | Type      | Description                                                    |
+|--------------|-----------|----------------------------------------------------------------|
+| `stream_id`  | `u64`     | Stream identifier.                                             |
+| `actor`      | `Address` | Sender address (same as `sender` field).                       |
+| `timestamp`  | `u64`     | Ledger close time when the resume was recorded.                |
+| `sender`     | `Address` | Account that resumed the stream.                               |
+| `resumed_at` | `u64`     | Ledger close time at which vesting restarted (Unix seconds).   |
+
+**Indexer mapping:** event type `"resumed"`, metadata includes `resumed_at`.
+
+---
+
+### StreamTransferred *(bonus — emitted by `transfer_stream`)*
+
+**Topic:** `("Stream", "Transfer")`  
+**Triggered by:** `transfer_stream()`  
+**Actor:** The previous recipient who authorized the transfer.
+
+| Field           | Type      | Description                                          |
+|-----------------|-----------|------------------------------------------------------|
+| `stream_id`     | `u64`     | Stream identifier.                                   |
+| `actor`         | `Address` | Old recipient address (same as `old_recipient`).     |
+| `timestamp`     | `u64`     | Ledger close time when the transfer was recorded.    |
+| `old_recipient` | `Address` | Account transferring away the stream rights.         |
+| `new_recipient` | `Address` | Account receiving the stream rights.                 |
+
+**Indexer mapping:** event type `"transferred"`, metadata includes `new_recipient`.
+
+---
+
+### ClawbackExecuted *(bonus — emitted by `clawback`)*
+
+**Topic:** `("Stream", "Clawback")`  
+**Triggered by:** `clawback()`  
+**Actor:** The admin address that authorized the clawback.
+
+| Field       | Type      | Description                                                   |
+|-------------|-----------|---------------------------------------------------------------|
+| `stream_id` | `u64`     | Stream identifier.                                            |
+| `actor`     | `Address` | Admin address (same as `recipient` field).                    |
+| `timestamp` | `u64`     | Ledger close time when the clawback was executed.             |
+| `amount`    | `i128`    | Tokens clawed back from the stream (in stroops).              |
+| `recipient` | `Address` | Admin account that received the clawed-back tokens.           |
+
+**Indexer mapping:** event type `"clawback"`, amount = `amount`, metadata includes `recipient`.
+
+---
+
+### ProposalCreated *(new — DAO governance, #695)*
+
+**Topic:** `("Proposal", "Created")`
+**Triggered by:** `create_proposal()`
+
+| Field         | Type             | Description                                         |
+|---------------|------------------|-----------------------------------------------------|
+| `proposal_id` | `u64`            | Unique proposal identifier.                         |
+| `proposer`    | `Address`        | Account that created the proposal.                  |
+| `target`      | `ProposalTarget` | What the proposal changes when executed.            |
+| `voting_end`  | `u64`            | Ledger timestamp when voting closes (created + 7d). |
+| `timestamp`   | `u64`            | Ledger close time when the proposal was created.    |
+
+### VoteCast *(new — DAO governance, #695)*
+
+**Topic:** `("Proposal", "Vote")`
+**Triggered by:** `vote()`
+
+| Field         | Type      | Description                                    |
+|---------------|-----------|------------------------------------------------|
+| `proposal_id` | `u64`     | Proposal being voted on.                       |
+| `voter`       | `Address` | Account that voted.                            |
+| `support`     | `bool`    | `true` = for, `false` = against.               |
+| `weight`      | `i128`    | Voter's governance token balance at vote time. |
+| `timestamp`   | `u64`     | Ledger close time of the vote.                 |
+
+### ProposalExecuted *(new — DAO governance, #695)*
+
+**Topic:** `("Proposal", "Executed")`
+**Triggered by:** `execute()` (only when the proposal passes)
+
+| Field         | Type             | Description                  |
+|---------------|------------------|------------------------------|
+| `proposal_id` | `u64`            | Executed proposal.           |
+| `target`      | `ProposalTarget` | The change that was applied. |
+| `timestamp`   | `u64`            | Ledger close time of the execution. |
+
+---
+
+## Event Ordering Guarantees
+
+Within a single transaction:
+
+- `create_stream` → exactly one `StreamCreated`
+- `create_split_stream` → exactly one `StreamCreated` per child stream, in allocation order
+- `claim` → exactly one `StreamClaimed`, followed by at most one `StreamCompleted` (only when the stream is fully drained)
+- `cancel` → exactly one `StreamCanceled`
+- `pause_stream` → exactly one `StreamPaused`
+- `resume_stream` → exactly one `StreamResumed`
+- `transfer_stream` → exactly one `StreamTransferred`
+- `clawback` → exactly one `ClawbackExecuted` (only when `actual_clawback > 0`)
+
+---
+
+## Claimable accounting and replay (#1132)
+
+The existing event payloads are sufficient for the scoped claim/cancel lifecycle;
+this contract does not emit an event for `claimable` or `get_claimable_batch` reads.
+A query is not a committed payment. No event fields or storage layout change is
+needed for this rule.
+
+For a successful `claim`, use `StreamClaimed.amount` as the transfer delta and
+`StreamClaimed.claimed_amount` as the authoritative cumulative value **after** the
+call. Its `stream_id`, `actor`, `recipient`, and ledger `timestamp` identify the
+stream, claimant and time. The token transfer and accounting write both succeed
+before the event is published. A failed claim has no committed `Claimed` or
+`Completed` event; failed-transaction diagnostic events must not be indexed as
+successful actions.
+
+At a timestamp `t`, let `V(t)` be cumulative vested base units and `C` be the
+current claimed total. Then `claimable(t) = max(V(t) - C, 0)`. The boundary
+examples below describe an unpaused linear stream with no cliff:
+
+- Before the start (and at the start), claimable is zero.
+- At or after the end, claimable is `total_amount - C`.
+- Within a linear schedule, `V(t) = floor(total_amount * elapsed / duration)`.
+  Rounding is applied to cumulative vesting, not to each transfer. Multiple
+  partial claims do not accumulate rounding loss; the final remainder is paid
+  at the end. Production arithmetic evaluates this quotient without overflowing
+  an intermediate multiplication.
+- After every successful claim, `C + claimable(t) <= total_amount`. A partial
+  claim emits exactly one `Claimed`. A draining claim emits `Claimed` and then
+  `Completed`; the completion's total is a status check, **not another payment**.
+
+For cancellation of such a stream, first apply the single `Canceled.refunded_amount` to the
+previous total: `new_total = old_total - refunded_amount`. Preserve the claimed
+total. The canceled end is `min(old_end, max(start_time, Canceled.timestamp))`.
+For an unpaused stream canceled during vesting, this leaves exactly the vested
+amount as the new cap; subsequent claims cannot exceed it. Cancellation before
+start leaves a zero cap and full refund. Cancellation at/after end refunds zero.
+A repeated cancellation emits no new event. Existing pause/cliff semantics remain
+in effect; process those lifecycle events before evaluating their schedules.
+
+### Exactly-once consumer rule
+
+Process successful events in ledger/transaction/event order. Use a durable RPC
+event identity, namespaced by network and emitting contract (or the transaction
+hash plus event ordinal), as the deduplication key. Commit that key, the event
+record and the projection update atomically; only then advance the checkpoint.
+Replaying an already processed page must not reapply transfers or refunds.
+
+Do **not** deduplicate by timestamp, amount or stream ID alone: two equal partial
+claims can succeed for the same stream in the same ledger. Their cumulative
+`claimed_amount` values are different. Set the projection to that cumulative
+value; do not add both it and `amount`. Process `Completed` only as a status
+transition after its corresponding `Claimed`.
+
+Example: a stream of 10 base units over three seconds vests 3, 6, then 10 units.
+Two 1-unit claims in the first second emit cumulative totals 1 and 2; a 4-unit
+claim in the second emits 6; the final 4-unit claim emits 10 followed by
+`Completed(total_amount = 10)`. Replaying these events still represents exactly
+10 units transferred. If canceled in the first second after the first claim,
+`Canceled(refunded_amount = 7)` reduces the cap to 3, leaving only 2 claimable.
+
+These are consumer requirements for the event contract, not a claim that every
+backend persistence path already implements transactional event-ID deduplication.
+Regression coverage in `contracts/src/claimable_events_test.rs` checks real token
+balances, stored accounting, event payloads/order and replay of duplicate pages.
+
+---
+
+## Indexer Event Type Mapping
+
+The table below maps contract event names to the `eventType` strings stored in the
+`stream_events` SQLite table and returned by `GET /api/streams/:id/history`.
+
+| Contract event topic | `eventType` in DB  | `actor` field source            |
+|----------------------|--------------------|---------------------------------|
+| `Created`            | `created`          | `sender`                        |
+| `Claimed`            | `claimed`          | `recipient`                     |
+| `Completed`          | `completed`        | `recipient` (final claimant)    |
+| `Canceled`           | `canceled`         | `sender`                        |
+| `Paused`             | `paused`           | `sender`                        |
+| `Resumed`            | `resumed`          | `sender`                        |
+| `Transfer`           | `transferred`      | `old_recipient`                 |
+| `Clawback`           | `clawback`         | `admin`                         |
+
+---
+
+## Adding New Events
+
+To add a new event type:
+
+1. Define a `#[contracttype]` struct in `contracts/src/lib.rs` with the three
+   mandatory base fields (`stream_id`, `actor`, `timestamp`) plus any
+   event-specific fields.
+2. Call `env.events().publish((symbol_short!("Stream"), symbol_short!("<Name>")), <Struct> { ... })` inside the relevant contract function.
+3. Add a `case "<Name>":` branch in `processEvent()` inside
+   `backend/src/services/indexer.ts` and call `recordEventWithDb`.
+4. Document the new event in this file.

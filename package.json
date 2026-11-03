@@ -1,0 +1,44 @@
+{
+  "name": "stellar-flow",
+  "version": "1.0.0",
+  "description": "Real-time payment and payroll streaming protocol built on Stellar",
+  "private": true,
+  "scripts": {
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "install:all": "cd backend && npm install && cd ../frontend && npm install",
+    "verify:dependencies": "node scripts/verify-dependencies.mjs",
+    "verify:backend-ci": "node scripts/check-backend-ci.mjs",
+    "verify:contract-ci": "node scripts/check-contract-ci.mjs",
+    "verify:frontend-ci": "node scripts/check-frontend-ci.mjs",
+    "test:frontend-ci": "node --test scripts/check-frontend-ci.test.mjs",
+    "verify:openapi-responses": "node scripts/check-openapi-responses.mjs",
+    "test:openapi-responses": "node --test scripts/check-openapi-responses.test.mjs",
+    "compose:up": "bash scripts/compose-up.sh",
+    "test:compose-up": "bash scripts/compose-up.test.sh",
+
+    "sqlite:backup": "bash scripts/sqlite-backup.sh",
+    "sqlite:verify": "bash scripts/sqlite-backup.sh --verify",
+    "test:sqlite-backup": "bash scripts/sqlite-backup.test.sh",
+    "test:sqlite-restore": "bash scripts/sqlite-restore.test.sh",
+    "build": "cd backend && npm run build && cd ../frontend && npm run build",
+    "seed": "cd backend && npm run seed",
+    "deploy:contract": "./scripts/deploy.sh",
+    "gen:bindings": "./scripts/generate-contract-bindings.sh",
+    "changelog:update": "conventional-changelog -p angular -i CHANGELOG.md -s",
+    "prepare": "husky"
+  },
+  "license": "MIT",
+  "lint-staged": {
+    "**/*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.8.0",
+    "@commitlint/config-conventional": "^19.8.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.0"
+  }
+}

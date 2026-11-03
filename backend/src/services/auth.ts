@@ -1,0 +1,706 @@
+import {
+  Account,
+  Keypair,
+  Networks,
+  Operation,
+  Transaction,
+  TransactionBuilder,
+  WebAuth,
+} from "@stellar/stellar-sdk";
+import jwt from "jsonwebtoken";
+import crypto from "crypto";
+import { Request, Response, NextFunction } from "express";
+import { sendApiError } from "../apiErrors";
+import { logger } from "../logger";
+import { recordSecretsRotation } from "./secretsRotationOutcome";
+import {
+  AUTH_CHALLENGE_OUTCOME_CODES,
+  recordAuthChallengeOutcome,
+} from "./authChallengeOutcome";
+import { getCorrelationId } from "../correlationContext";
+
+const HORIZON_URL = (process.env.HORIZON_URL || "https://horizon-testnet.stellar.org").trim();
+
+const SERVER_SIGNING_KEY =
+  process.env.SERVER_SIGNING_KEY || (process.env.NODE_ENV === 'production' 
+    ? ((): string => { throw new Error("SERVER_SIGNING_KEY must be set in production") })() 
+    : Keypair.random().secret());
+
+const DOMAIN = (process.env.DOMAIN || "localhost").trim();
+const NETWORK_PASSPHRASE = process.env.NETWORK_PASSPHRASE || Networks.TESTNET;
+
+// Replay attack prevention
+const TIMESTAMP_TOLERANCE_SECONDS = 60; // 60 seconds tolerance
+
+/**
+ * Nonce lifecycle record.
+ *
+ * A nonce is inserted with `consumed: false` when the challenge is first seen
+ * and flipped to `consumed: true` only after the client signature has been
+ * verified and token signing has succeeded. This guarantees that:
+ *   - an expired nonce can be distinguished from a reused nonce, and
+ *   - a failed signature (or wrong-network signature) never burns a nonce
+ *     that a legitimate client still holds.
+ */
+interface NonceRecord {
+  accountId: string;
+  expiresAt: number;
+  consumed: boolean;
+}
+
+const nonceStore = new Map<string, NonceRecord>();
+
+// Clean up expired nonces every 5 minutes
+setInterval(() => {
+  const now = Math.floor(Date.now() / 1000);
+  for (const [nonce, record] of nonceStore.entries()) {
+    if (now > record.expiresAt) {
+      nonceStore.delete(nonce);
+    }
+  }
+}, 5 * 60 * 1000);
+
+let jwtSecret = process.env.JWT_SECRET;
+
+if (!jwtSecret) {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("JWT_SECRET must be set in production");
+  }
+
+  jwtSecret = crypto.randomBytes(32).toString("hex");
+
+  logger.warn(
+    "JWT_SECRET not set — using ephemeral secret. All tokens will be invalidated on restart.",
+  );
+} else {
+  logger.warn(
+    "JWT_SECRET is configured. Rotating this secret will invalidate all existing tokens and force all users to re-authenticate.",
+  );
+}
+
+// Record the credential set this process booted with so the
+// /api/secrets-rotation/monitoring outcome signal and the
+// secrets_rotation_outcome gauge can distinguish "no rotation recorded"
+// from "rotation rollout in progress". The credential VALUE is never
+// recorded — only that a credential was provisioned at startup.
+if (process.env.JWT_SECRET) {
+  recordSecretsRotation("jwt_secret");
+}
+if (process.env.SERVER_SIGNING_KEY) {
+  recordSecretsRotation("server_signing_key");
+}
+
+export function getJwtSecret() {
+  return jwtSecret as string;
+}
+
+export interface AuthUser {
+  accountId: string;
+  signer_count?: number;
+  threshold?: number;
+}
+
+interface HorizonSigner {
+  key: string;
+  weight: number;
+  type: string;
+}
+
+interface HorizonAccountThresholds {
+  low_threshold: number;
+  med_threshold: number;
+  high_threshold: number;
+}
+
+interface HorizonAccountResponse {
+  signers: HorizonSigner[];
+  thresholds: HorizonAccountThresholds;
+}
+
+/**
+ * Fetches account signers and thresholds from Horizon.
+ * Returns null if the account doesn't exist (unfunded) or on network error.
+ */
+async function fetchAccountSigners(
+  accountId: string,
+): Promise<{ signers: string[]; threshold: number } | null> {
+  try {
+    const response = await fetch(`${HORIZON_URL}/accounts/${accountId}`);
+    if (!response.ok) return null;
+
+    const data = (await response.json()) as HorizonAccountResponse;
+    const signers = data.signers
+      .filter((s) => s.weight > 0)
+      .map((s) => s.key);
+    // Use the medium threshold (required for most operations)
+    const threshold = data.thresholds.med_threshold;
+    return { signers, threshold };
+  } catch {
+    return null;
+  }
+}
+
+export function generateChallenge(accountId: string): string {
+  const serverKeypair = Keypair.fromSecret(SERVER_SIGNING_KEY);
+  
+  // Generate a unique nonce for this challenge
+  const nonce = crypto.randomBytes(16).toString('hex'); // Shorter nonce for manage data
+  const timestamp = Math.floor(Date.now() / 1000);
+  
+  // Create challenge transaction with timestamp and nonce in manage data operation
+  const transaction = new TransactionBuilder(
+    new Account(serverKeypair.publicKey(), "-1"),
+    {
+      fee: "100",
+      networkPassphrase: NETWORK_PASSPHRASE,
+      timebounds: {
+        minTime: 0,
+        maxTime: Math.floor(Date.now() / 1000) + 300, // 5 minutes
+      },
+    }
+  )
+    .addOperation(
+      Operation.manageData({
+        name: `${DOMAIN} auth`,
+        // SEP-10: value must be a 64-char base64 random string (48 random bytes)
+        value: crypto.randomBytes(48).toString("base64"),
+        source: accountId, // SEP-10: first op must have the client account as source
+      })
+    )
+    .addOperation(
+      Operation.manageData({
+        name: "web_auth_domain",
+        value: DOMAIN,
+        source: serverKeypair.publicKey(),
+      })
+    )
+    .addOperation(
+      Operation.manageData({
+        name: "timestamp",
+        value: timestamp.toString(),
+        source: serverKeypair.publicKey(),
+      })
+    )
+    .addOperation(
+      Operation.manageData({
+        name: "nonce",
+        value: nonce,
+        source: serverKeypair.publicKey(),
+      })
+    )
+    .build();
+
+  transaction.sign(serverKeypair);
+  return transaction.toEnvelope().toXDR("base64");
+}
+
+/**
+ * Verifies a SEP-10 challenge transaction and issues a JWT.
+ * Supports both standard single-signer accounts and M-of-N multisig accounts.
+ * 
+ * Includes replay attack prevention:
+ * - Validates timestamp is within 60 seconds of current time
+ * - Ensures nonce hasn't been used before
+ * - Stores nonce for 60 seconds to prevent replay
+ *
+ * For multisig accounts, fetches signers from Horizon and passes them all to
+ * verifyChallengeTxSigners. The JWT payload includes signer_count and threshold.
+ *
+ * Rejects if:
+ * - Transaction is malformed or not a SEP-10 challenge
+ * - Transaction has expired (stale)
+ * - Domain/Network doesn't match
+ * - Client signature(s) are missing or invalid
+ * - Timestamp is too old or too far in the future
+ * - Nonce has been used before (replay attack)
+ */
+export function clearNonceStoreForTesting(): void {
+  nonceStore.clear();
+}
+
+/** Test-only helper — returns a snapshot of the nonce store for assertions. */
+export function _getNonceStoreForTesting(): ReadonlyMap<string, NonceRecord> {
+  return nonceStore;
+}
+
+function extractManageDataString(val: unknown): string {
+  if (typeof val === "string") return val;
+  if (val instanceof Uint8Array || Buffer.isBuffer(val)) {
+    return Buffer.from(val).toString("utf-8");
+  }
+  if (val && typeof val === "object" && "value" in val) {
+    const inner = (val as any).value;
+    if (typeof inner === "string") return inner;
+    if (inner instanceof Uint8Array || Buffer.isBuffer(inner)) {
+      return Buffer.from(inner).toString("utf-8");
+    }
+  }
+  return "";
+}
+
+export interface VerifyChallengeOptions {
+  correlationId?: string;
+  streamId?: string;
+}
+
+export async function verifyChallengeAndIssueToken(
+  transactionBase64: string,
+  options?: VerifyChallengeOptions,
+): Promise<string> {
+  const startTime = Date.now();
+  const correlationId = options?.correlationId ?? getCorrelationId();
+  const streamId = options?.streamId;
+  const serverKeypair = Keypair.fromSecret(SERVER_SIGNING_KEY);
+  const serverAccountId = serverKeypair.publicKey();
+
+  let clientAccountID: string | undefined;
+
+  try {
+    // readChallengeTx validates the transaction structure and server signature
+    const challengeTx = WebAuth.readChallengeTx(
+      transactionBase64,
+      serverAccountId,
+      NETWORK_PASSPHRASE,
+      DOMAIN,
+      DOMAIN,
+    );
+
+    clientAccountID = challengeTx.clientAccountID;
+    const { tx } = challengeTx;
+    const ops = tx.operations;
+
+    const timestampOp = ops.find(
+      (op) => op.type === "manageData" && op.name === "timestamp",
+    ) as Operation.ManageData | undefined;
+    const nonceOp = ops.find(
+      (op) => op.type === "manageData" && op.name === "nonce",
+    ) as Operation.ManageData | undefined;
+
+    const validateNonce = () => {
+      // Validate timestamp and nonce for replay attack prevention
+      if (timestampOp?.value && nonceOp?.value) {
+        const timestampStr = extractManageDataString(timestampOp.value);
+        const nonce = extractManageDataString(nonceOp.value);
+
+        if (!timestampStr || !nonce) {
+          throw new Error("Invalid challenge format: missing timestamp or nonce");
+        }
+
+        const timestamp = parseInt(timestampStr, 10);
+        const now = Math.floor(Date.now() / 1000);
+        const timeDiff = Math.abs(now - timestamp);
+
+        // Check if timestamp is within tolerance (expired nonce / timestamp)
+        if (timeDiff > TIMESTAMP_TOLERANCE_SECONDS) {
+          const latencyMs = Date.now() - startTime;
+          recordAuthChallengeOutcome({
+            outcome: "transient_delay",
+            outcomeCode: AUTH_CHALLENGE_OUTCOME_CODES.transient_delay,
+            reason: "expired_nonce",
+            detail: `Challenge timestamp is too old or too far in the future (${timeDiff}s difference)`,
+            isNormalEmpty: false,
+            latencyMs,
+            accountId: clientAccountID,
+            expectedNetwork: NETWORK_PASSPHRASE,
+            correlation_id: correlationId,
+            streamId,
+          });
+          const err = new Error(
+            `Challenge timestamp is too old or too far in the future (${timeDiff}s difference)`,
+          );
+          (err as any).outcomeRecorded = true;
+          throw err;
+        }
+
+        // ── Nonce boundary: expired vs. reused vs. fresh ─────────────────
+        // The store keeps a record for every nonce we have seen. The record
+        // is NOT flipped to consumed:true until the signature verifies below,
+        // so a failed attempt cannot silently burn the nonce.
+        const existing = nonceStore.get(nonce);
+        if (existing) {
+          // Expired record that has not yet been reaped by the cleanup timer.
+          if (now > existing.expiresAt) {
+            const latencyMs = Date.now() - startTime;
+            recordAuthChallengeOutcome({
+              outcome: "transient_delay",
+              outcomeCode: AUTH_CHALLENGE_OUTCOME_CODES.transient_delay,
+              reason: "expired_nonce",
+              detail: "Challenge nonce has expired. Please request a new challenge.",
+              isNormalEmpty: false,
+              latencyMs,
+              accountId: clientAccountID,
+              expectedNetwork: NETWORK_PASSPHRASE,
+              correlation_id: correlationId,
+              streamId,
+            });
+            const err = new Error(
+              "Challenge nonce has expired. Please request a new challenge.",
+            );
+            (err as any).outcomeRecorded = true;
+            (err as any).statusCode = 401;
+            (err as any).code = "UNAUTHORIZED";
+            throw err;
+          }
+
+          // Already consumed → genuine replay.
+          // Presented under a different account → cross-account reuse.
+          // Not yet consumed, same account → retry after a prior failed
+          // signature attempt; fall through to signature verification.
+          if (existing.consumed || existing.accountId !== clientAccountID) {
+            const latencyMs = Date.now() - startTime;
+            const sameAccount = existing.accountId === clientAccountID;
+            recordAuthChallengeOutcome({
+              outcome: "blocked",
+              outcomeCode: AUTH_CHALLENGE_OUTCOME_CODES.blocked,
+              reason: "reused_nonce",
+              detail: sameAccount
+                ? "Challenge nonce has already been used (replay attack detected)"
+                : "Challenge nonce was issued to a different account",
+              isNormalEmpty: false,
+              latencyMs,
+              accountId: clientAccountID,
+              expectedNetwork: NETWORK_PASSPHRASE,
+              correlation_id: correlationId,
+              streamId,
+            });
+            const err = new Error(
+              sameAccount
+                ? "Challenge nonce has already been used (replay attack detected)"
+                : "Challenge nonce was issued to a different account",
+            );
+            (err as any).outcomeRecorded = true;
+            (err as any).statusCode = 401;
+            (err as any).code = "UNAUTHORIZED";
+            throw err;
+          }
+        } else {
+          // First time we see this nonce → record it as "seen, not yet consumed".
+          nonceStore.set(nonce, {
+            accountId: challengeTx.clientAccountID,
+            expiresAt: now + TIMESTAMP_TOLERANCE_SECONDS,
+            consumed: false,
+          });
+        }
+      } else {
+        const latencyMs = Date.now() - startTime;
+        recordAuthChallengeOutcome({
+          outcome: "blocked",
+          outcomeCode: AUTH_CHALLENGE_OUTCOME_CODES.blocked,
+          reason: "malformed_challenge",
+          detail: "Challenge missing required timestamp and nonce",
+          isNormalEmpty: false,
+          latencyMs,
+          accountId: clientAccountID,
+          expectedNetwork: NETWORK_PASSPHRASE,
+          correlation_id: correlationId,
+          streamId,
+        });
+        const err = new Error("Challenge missing required timestamp and nonce");
+        (err as any).outcomeRecorded = true;
+        throw err;
+      }
+    };
+    validateNonce();
+
+    // Try to fetch account signers from Horizon to detect multisig accounts
+    const accountInfo = await fetchAccountSigners(clientAccountID);
+    const isMultisig =
+      accountInfo !== null && accountInfo.signers.length > 1;
+
+    let signersToVerify: string[];
+    if (isMultisig) {
+      signersToVerify = accountInfo.signers;
+    } else {
+      signersToVerify = [clientAccountID];
+    }
+
+    // verifyChallengeTxSigners ensures the required signers actually signed it
+    let signersFound: string[] = [];
+    try {
+      signersFound = WebAuth.verifyChallengeTxSigners(
+        transactionBase64,
+        serverAccountId,
+        NETWORK_PASSPHRASE,
+        signersToVerify,
+        DOMAIN,
+        DOMAIN,
+      );
+    } catch (verifyErr: any) {
+      if (!verifyErr?.message?.includes("None of the given signers match")) {
+        throw verifyErr;
+      }
+    }
+
+    if (!signersFound || signersFound.length === 0) {
+      // Check candidate alternative networks to diagnose wallet signing for the wrong network
+      const candidateNetworks = [
+        Networks.PUBLIC,
+        Networks.TESTNET,
+        Networks.FUTURENET,
+      ].filter((cand) => cand !== NETWORK_PASSPHRASE);
+
+      let wrongNetworkDetected: string | undefined;
+      for (const candidate of candidateNetworks) {
+        try {
+          const candidateTx = new Transaction(transactionBase64, candidate);
+          const candidateHash = candidateTx.hash();
+          for (const sig of candidateTx.signatures) {
+            let sigBytes: Buffer;
+            if (Buffer.isBuffer(sig.signature)) {
+              sigBytes = sig.signature;
+            } else if (typeof (sig.signature as any)?.toJSON === "function") {
+              sigBytes = Buffer.from((sig.signature as any).toJSON(), "hex");
+            } else {
+              sigBytes = Buffer.from(sig.signature as any);
+            }
+
+            for (const signer of signersToVerify) {
+              try {
+                const kp = Keypair.fromPublicKey(signer);
+                if (kp.verify(candidateHash, sigBytes)) {
+                  wrongNetworkDetected = candidate;
+                  break;
+                }
+              } catch {
+                // Ignore key parsing failures
+              }
+            }
+            if (wrongNetworkDetected) break;
+          }
+          if (wrongNetworkDetected) break;
+        } catch {
+          // Ignore candidate hash or deserialization errors
+        }
+      }
+
+      const latencyMs = Date.now() - startTime;
+      if (wrongNetworkDetected) {
+        recordAuthChallengeOutcome({
+          outcome: "blocked",
+          outcomeCode: AUTH_CHALLENGE_OUTCOME_CODES.blocked,
+          reason: "wrong_network",
+          detail: `Wallet signed for wrong network (${wrongNetworkDetected} instead of expected ${NETWORK_PASSPHRASE})`,
+          isNormalEmpty: false,
+          latencyMs,
+          accountId: clientAccountID,
+          expectedNetwork: NETWORK_PASSPHRASE,
+          detectedNetwork: wrongNetworkDetected,
+          correlation_id: correlationId,
+          streamId,
+        });
+        const err = new Error(
+          `Challenge transaction verification failed (wallet signed for wrong network: ${wrongNetworkDetected}, expected: ${NETWORK_PASSPHRASE}).`,
+        );
+        (err as any).outcomeRecorded = true;
+        throw err;
+      }
+
+      recordAuthChallengeOutcome({
+        outcome: "blocked",
+        outcomeCode: AUTH_CHALLENGE_OUTCOME_CODES.blocked,
+        reason: "invalid_signature",
+        detail: "Challenge transaction verification failed (invalid signature).",
+        isNormalEmpty: false,
+        latencyMs,
+        accountId: clientAccountID,
+        expectedNetwork: NETWORK_PASSPHRASE,
+        correlation_id: correlationId,
+        streamId,
+      });
+      const err = new Error(
+        "Challenge transaction verification failed (invalid signature).",
+      );
+      (err as any).outcomeRecorded = true;
+      throw err;
+    }
+
+    // Horizon lookup yields to other requests. Recheck freshness and replay
+    // state before committing; no await may separate this check, token signing,
+    // and nonce consumption. Failed token signing leaves the nonce retryable.
+    validateNonce();
+    const payload: AuthUser = { accountId: clientAccountID };
+    if (isMultisig && accountInfo) {
+      payload.signer_count = accountInfo.signers.length;
+      payload.threshold = accountInfo.threshold;
+    }
+
+    const token = jwt.sign(payload, getJwtSecret(), { expiresIn: "24h" });
+    const nonce = extractManageDataString(nonceOp!.value!);
+    nonceStore.get(nonce)!.consumed = true;
+
+    // Normal empty case: unfunded account (0 signers in Horizon, falling back to single-signer)
+    const isNormalEmpty = accountInfo === null;
+    const latencyMs = Date.now() - startTime;
+
+    recordAuthChallengeOutcome({
+      outcome: "success",
+      outcomeCode: AUTH_CHALLENGE_OUTCOME_CODES.success,
+      reason: isNormalEmpty ? "normal_empty_account" : "success",
+      detail: isNormalEmpty
+        ? "Challenge verified for unfunded account using single-signer fallback"
+        : "Challenge verified successfully",
+      isNormalEmpty,
+      latencyMs,
+      accountId: clientAccountID,
+      expectedNetwork: NETWORK_PASSPHRASE,
+      correlation_id: correlationId,
+      streamId,
+    });
+
+    return token;
+  } catch (error: any) {
+    const latencyMs = Date.now() - startTime;
+    if (error.message?.includes("TimeBounds")) {
+      recordAuthChallengeOutcome({
+        outcome: "transient_delay",
+        outcomeCode: AUTH_CHALLENGE_OUTCOME_CODES.transient_delay,
+        reason: "expired_nonce",
+        detail: "Challenge has expired (TimeBounds exceeded). Please request a new one.",
+        isNormalEmpty: false,
+        latencyMs,
+        accountId: clientAccountID,
+        expectedNetwork: NETWORK_PASSPHRASE,
+        correlation_id: correlationId,
+        streamId,
+      });
+      const err = new Error("Challenge has expired. Please request a new one.");
+      (err as any).statusCode = 401;
+      (err as any).code = "UNAUTHORIZED";
+      (err as any).outcomeRecorded = true;
+      throw err;
+    }
+
+    // Record outcome if not already recorded prior to rethrowing
+    
+    if (!error.outcomeRecorded) {
+      recordAuthChallengeOutcome({
+        outcome: "blocked",
+        outcomeCode: AUTH_CHALLENGE_OUTCOME_CODES.blocked,
+        reason: "malformed_challenge",
+        detail: `Challenge verification failed: ${error.message}`,
+        isNormalEmpty: false,
+        latencyMs,
+        accountId: clientAccountID,
+        expectedNetwork: NETWORK_PASSPHRASE,
+        correlation_id: correlationId,
+        streamId,
+      });
+    }
+
+    const err = new Error(
+      error.message?.startsWith("Challenge verification failed")
+        ? error.message
+        : `Challenge verification failed: ${error.message}`,
+    );
+    (err as any).statusCode = 401;
+    (err as any).code = "UNAUTHORIZED";
+    throw err;
+  }
+}
+
+/**
+ * Refreshes a still-valid JWT and returns a new one with a fresh 24h expiry.
+ *
+ * Accepts the current token in the Authorization header (Bearer scheme).
+ * Returns 401 if the token is missing, malformed, or already expired.
+ */
+export function refreshToken(req: Request, res: Response): void {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    sendApiError(req, res, 401, "Missing or invalid authorization header.", {
+      code: "UNAUTHORIZED",
+    });
+    return;
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  try {
+    const decoded = jwt.verify(token, getJwtSecret()) as AuthUser;
+
+    const newToken = jwt.sign(
+      { accountId: decoded.accountId },
+      getJwtSecret(),
+      { expiresIn: "24h" },
+    );
+
+    res.json({ token: newToken });
+  } catch {
+    sendApiError(req, res, 401, "Invalid or expired authorization token.", {
+      code: "UNAUTHORIZED",
+    });
+  }
+}
+
+export function authMiddleware(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    sendApiError(req, res, 401, "Missing or invalid authorization header.", {
+      code: "unauthorized",
+    });
+    return;
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  try {
+    const decoded = jwt.verify(token, getJwtSecret()) as AuthUser;
+    (req as any).user = decoded; // Attach user to request
+    next();
+  } catch (error: any) {
+    if (error.name === "TokenExpiredError") {
+      sendApiError(req, res, 401, "Authorization token has expired.", {
+        code: "token_expired",
+      });
+    } else {
+      sendApiError(req, res, 401, "Invalid authorization token.", {
+        code: "invalid_token",
+      });
+    }
+  }
+}
+
+export function adminJwtAuth(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    sendApiError(req, res, 401, "Missing or invalid authorization header.", {
+      code: "unauthorized",
+    });
+    return;
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  try {
+    const decoded = jwt.verify(token, getJwtSecret()) as any;
+    if (decoded.role !== "admin" && decoded.accountId !== "admin" && !decoded.isAdmin) {
+      sendApiError(req, res, 403, "Forbidden: Admin access required.", {
+        code: "forbidden",
+      });
+      return;
+    }
+    (req as any).user = decoded; // Attach user to request
+    next();
+  } catch (error: any) {
+    if (error.name === "TokenExpiredError") {
+      sendApiError(req, res, 401, "Authorization token has expired.", {
+        code: "token_expired",
+      });
+    } else {
+      sendApiError(req, res, 401, "Invalid authorization token.", {
+        code: "invalid_token",
+      });
+    }
+  }
+}

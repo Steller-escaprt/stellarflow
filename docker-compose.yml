@@ -1,0 +1,75 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: stellar-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      # Multi-stage production build (builder → prod-deps → runtime)
+      # Image target: <150 MB, non-root user "node"
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: stellar-backend
+    ports:
+      - "3001:3001"
+    env_file:
+      - ./backend/.env
+    environment:
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      # Persist SQLite database across container restarts
+      - backend-data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    # Bounded retry: give up after 5 crash restarts instead of looping forever.
+    # scripts/compose-up.sh detects the loop earlier and rolls back.
+    restart: "on-failure:5"
+    # Health check: polls /api/health every 30s, 3 retries, 10s start grace period
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      # Multi-stage production build (builder → nginx:alpine)
+      # Image target: <50 MB, non-root user "nginx", serves static assets
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: stellar-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://backend:3001/api
+    # Frontend waits for backend to pass its health check before starting
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    # Health check: polls served app root every 30s
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  # Named volume for SQLite persistence
+  backend-data:

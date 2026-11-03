@@ -1,0 +1,1 @@
+FROM node:20WORKDIR /appCOPY package*.json ./RUN npm installCOPY . .EXPOSE 3001CMD ["npm", "run", "dev"]
