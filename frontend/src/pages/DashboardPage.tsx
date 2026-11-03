@@ -114,10 +114,11 @@ export function DashboardPage({ wallet: propWallet }: DashboardPageProps) {
   const refreshStreams = useCallback(async (activeFilters: ListStreamsFilters) => {
     try {
       const response = await listStreams(activeFilters);
-      setStreams(response.data);
-      setCurrentPage(response.page);
-      setHasMore(response.data.length < response.total);
-      setTotalUnfilteredCount(response.total);
+      const safe = Array.isArray(response?.data) ? response.data : [];
+      setStreams(safe);
+      setCurrentPage(response?.page || 1);
+      setHasMore(safe.length < (response?.total || 0));
+      setTotalUnfilteredCount(response?.total || 0);
     } catch {
       showToast("Failed to refresh streams", "error");
     }
@@ -132,10 +133,11 @@ export function DashboardPage({ wallet: propWallet }: DashboardPageProps) {
         ...apiFilters,
         page: nextPage,
       });
-      setStreams((prev) => [...prev, ...response.data]);
-      setCurrentPage(response.page);
-      setHasMore(streams.length + response.data.length < response.total);
-      setTotalUnfilteredCount(response.total);
+      const safe = Array.isArray(response?.data) ? response.data : [];
+      setStreams((prev) => [...prev, ...safe]);
+      setCurrentPage(response?.page || 1);
+      setHasMore(streams.length + safe.length < (response?.total || 0));
+      setTotalUnfilteredCount(response?.total || 0);
     } catch {
       showToast("Failed to load more streams", "error");
     } finally {
@@ -149,16 +151,17 @@ export function DashboardPage({ wallet: propWallet }: DashboardPageProps) {
     async function loadData() {
       try {
         const [streamsResponse, issuesData] = await Promise.all([
-          listStreams(apiFilters),
-          listOpenIssues(),
+          listStreams(apiFilters).catch(() => ({ data: [], total: 0, page: 1, limit: 10 })),
+          listOpenIssues().catch(() => []),
         ]);
         if (!isMounted) return;
 
-        setStreams(streamsResponse.data);
-        setCurrentPage(streamsResponse.page);
-        setHasMore(streamsResponse.data.length < streamsResponse.total);
-        setTotalUnfilteredCount(streamsResponse.total);
-        setIssues(issuesData);
+        const safeStreams = Array.isArray(streamsResponse?.data) ? streamsResponse.data : [];
+        setStreams(safeStreams);
+        setCurrentPage(streamsResponse?.page || 1);
+        setHasMore(safeStreams.length < (streamsResponse?.total || 0));
+        setTotalUnfilteredCount(streamsResponse?.total || 0);
+        setIssues(Array.isArray(issuesData) ? issuesData : []);
       } catch (err) {
         if (!isMounted) return;
         showToast(

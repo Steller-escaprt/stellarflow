@@ -5,7 +5,7 @@ import { visualizer } from 'rollup-plugin-visualizer';
 
 /** Report-only first; set VITE_CSP_ENFORCE=true to send Content-Security-Policy instead. */
 const CSP_POLICY =
-  "default-src 'self'; connect-src 'self' https://rpc-futurenet.stellar.org";
+  "default-src 'self'; connect-src 'self' https://soroban-testnet.stellar.org https://rpc-futurenet.stellar.org https://horizon-testnet.stellar.org wss: ws:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline';";
 
 const cspHeaderName =
   process.env.VITE_CSP_ENFORCE === 'true'
@@ -22,13 +22,16 @@ export default defineConfig(({ command, mode }) => ({
     {
       name: 'content-security-policy',
       transformIndexHtml(html) {
+        if (process.env.VITE_CSP_ENFORCE !== 'true') {
+          return html;
+        }
         return {
           html,
           tags: [
             {
               tag: 'meta',
               attrs: {
-                'http-equiv': cspHeaderName,
+                'http-equiv': 'Content-Security-Policy',
                 content: CSP_POLICY,
               },
               injectTo: 'head',

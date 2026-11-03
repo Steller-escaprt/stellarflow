@@ -13,11 +13,17 @@ const DEFAULT_STALE_AFTER_MS = 4000;
 const API_BASE = import.meta.env.VITE_API_URL ?? "/api";
 
 export function getWebSocketUrl(): string {
-  // Construct WebSocket URL from API base URL
-  const apiUrl = import.meta.env.VITE_API_URL || window.location.origin + "/api";
-  const wsProtocol = apiUrl.startsWith("https") ? "wss" : "ws";
-  const wsUrl = apiUrl.replace(/^https?:\/\//, "").replace(/\/api$/, "");
-  return `${wsProtocol}://${wsUrl}/api/ws`;
+  if (typeof window !== "undefined") {
+    const rawApi = import.meta.env.VITE_API_URL;
+    if (rawApi && (rawApi.startsWith("http://") || rawApi.startsWith("https://"))) {
+      const isSecure = rawApi.startsWith("https://");
+      const hostPath = rawApi.replace(/^https?:\/\//, "").replace(/\/api\/?$/, "");
+      return `${isSecure ? "wss" : "ws"}://${hostPath}/api/ws`;
+    }
+    const isHttps = window.location.protocol === "https:";
+    return `${isHttps ? "wss" : "ws"}://${window.location.host}/api/ws`;
+  }
+  return "ws://localhost:3001/api/ws";
 }
 
 let authToken: string | null = null;
@@ -41,6 +47,11 @@ export class ApiError extends Error {
 }
 
 async function parseResponse<T>(response: Response): Promise<T> {
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("text/html") && response.ok) {
+    throw new ApiError("Endpoint returned HTML instead of JSON", response.status);
+  }
+
   const rawBody = await response.text();
   let body: Record<string, unknown> = {};
   if (rawBody) {
@@ -58,6 +69,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
     const message =
       (body.error as string | undefined) ??
       (body.message as string | undefined) ??
+      response.statusText ??
       "Unexpected API error";
     throw new ApiError(message, response.status, body);
   }

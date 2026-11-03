@@ -37,39 +37,44 @@ export function useWebSocket<T>(
     closedByUnmountRef.current = false;
 
     const connect = () => {
-      const socket = new WebSocket(url);
-      socketRef.current = socket;
-      setReadyState(socket.readyState);
+      try {
+        const socket = new WebSocket(url);
+        socketRef.current = socket;
+        setReadyState(socket.readyState);
 
-      socket.onopen = () => {
-        reconnectAttemptRef.current = 0;
-        setReadyState(WS_OPEN);
-      };
+        socket.onopen = () => {
+          reconnectAttemptRef.current = 0;
+          setReadyState(WS_OPEN);
+        };
 
-      socket.onmessage = (event: MessageEvent<string>) => {
-        try {
-          const data = JSON.parse(event.data) as T;
-          setLastMessage(data);
-          onMessageRef.current?.(data);
-        } catch {
-          // Ignore malformed messages to keep the hook resilient.
-        }
-      };
+        socket.onmessage = (event: MessageEvent<string>) => {
+          try {
+            const data = JSON.parse(event.data) as T;
+            setLastMessage(data);
+            onMessageRef.current?.(data);
+          } catch {
+            // Ignore malformed messages to keep the hook resilient.
+          }
+        };
 
-      socket.onerror = () => {
-        setReadyState(WS_CLOSING);
-      };
+        socket.onerror = () => {
+          setReadyState(WS_CLOSING);
+        };
 
-      socket.onclose = () => {
+        socket.onclose = () => {
+          setReadyState(WS_CLOSED);
+          if (closedByUnmountRef.current) return;
+
+          const attempt = reconnectAttemptRef.current;
+          const backoff =
+            BACKOFF_MS[Math.min(attempt, BACKOFF_MS.length - 1)] ?? BACKOFF_MS[0];
+          reconnectAttemptRef.current += 1;
+          reconnectTimerRef.current = window.setTimeout(connect, backoff);
+        };
+      } catch {
+        // Handle insecure connection / security error gracefully without crashing React
         setReadyState(WS_CLOSED);
-        if (closedByUnmountRef.current) return;
-
-        const attempt = reconnectAttemptRef.current;
-        const backoff =
-          BACKOFF_MS[Math.min(attempt, BACKOFF_MS.length - 1)] ?? BACKOFF_MS[0];
-        reconnectAttemptRef.current += 1;
-        reconnectTimerRef.current = window.setTimeout(connect, backoff);
-      };
+      }
     };
 
     connect();

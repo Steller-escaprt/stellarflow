@@ -144,12 +144,12 @@ export function SenderDashboard({
       try {
         const result = await listStreams({ sender: senderAddress });
         if (!active) return;
-        setStreams(result.data);
+        setStreams(Array.isArray(result?.data) ? result.data : []);
 
         // Fetch events in background
         const recentEvents = await getSenderEvents(senderAddress);
         if (active) {
-          setEvents(recentEvents);
+          setEvents(Array.isArray(recentEvents) ? recentEvents : []);
         }
       } catch (err) {
         if (!active) return;
@@ -168,12 +168,12 @@ export function SenderDashboard({
       try {
         const result = await listStreams({ sender: senderAddress });
         if (active) {
-          setStreams(result.data);
+          setStreams(Array.isArray(result?.data) ? result.data : []);
 
           // Also refresh events
           const recentEvents = await getSenderEvents(senderAddress);
           if (active) {
-            setEvents(recentEvents);
+            setEvents(Array.isArray(recentEvents) ? recentEvents : []);
           }
         }
       } catch {
