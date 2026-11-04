@@ -30,3 +30,4 @@ describe('CAP-15 Fee-Bump Gas Sponsorship Service', () => {
     expect(simulation.laboratoryUrl).toContain('&type=TransactionEnvelope');
   });
 });
+

@@ -43,3 +43,4 @@ describe('Soroban Resource Metering & Simulation Service', () => {
     expect(footprint.minResourceFeeXLM).toBe('0.0000150');
   });
 });
+

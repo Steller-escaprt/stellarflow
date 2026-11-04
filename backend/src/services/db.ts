@@ -266,39 +266,37 @@ class PostgresDatabase {
   }
 
   public prepare(sql: string): any {
-    const dbInstance = this;
     return {
-      run(...params: any[]): any {
+      run: (...params: any[]): any => {
         const paramObj = params.length === 1 && typeof params[0] === "object" && params[0] !== null && !Array.isArray(params[0]) ? params[0] : params;
-        const res = dbInstance.querySync(sql, paramObj);
+        const res = this.querySync(sql, paramObj);
         return {
           changes: res.rowCount,
           lastInsertRowid: 0,
         };
       },
-      get(...params: any[]): any {
+      get: (...params: any[]): any => {
         const paramObj = params.length === 1 && typeof params[0] === "object" && params[0] !== null && !Array.isArray(params[0]) ? params[0] : params;
-        const res = dbInstance.querySync(sql, paramObj);
+        const res = this.querySync(sql, paramObj);
         return res.rows[0] || undefined;
       },
-      all(...params: any[]): any {
+      all: (...params: any[]): any => {
         const paramObj = params.length === 1 && typeof params[0] === "object" && params[0] !== null && !Array.isArray(params[0]) ? params[0] : params;
-        const res = dbInstance.querySync(sql, paramObj);
+        const res = this.querySync(sql, paramObj);
         return res.rows;
       },
     };
   }
 
-  public transaction(fn: Function): any {
-    const dbInstance = this;
-    return (...args: any[]) => {
-      dbInstance.exec("BEGIN");
+  public transaction<T extends (...args: any[]) => any>(fn: T): (...args: Parameters<T>) => ReturnType<T> {
+    return (...args: Parameters<T>): ReturnType<T> => {
+      this.exec("BEGIN");
       try {
         const result = fn(...args);
-        dbInstance.exec("COMMIT");
+        this.exec("COMMIT");
         return result;
       } catch (error) {
-        dbInstance.exec("ROLLBACK");
+        this.exec("ROLLBACK");
         throw error;
       }
     };

@@ -17,6 +17,14 @@ jobs:
       - uses: actions/setup-node@v4
         with: {node-version: 20}
       - run: cd frontend && npm ci --legacy-peer-deps && npm run build
+  cli-tests:
+    name: StellarFlow CLI Test Suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 22}
+      - run: node --test scripts/cli.test.mjs
   compose-startup-script:
     name: Compose Startup Script
     runs-on: ubuntu-latest

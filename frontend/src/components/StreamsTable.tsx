@@ -187,7 +187,7 @@ export function StreamsTable({
 
   const visibleOptionalColumns = useMemo(
     () => OPTIONAL_STREAM_COLUMNS.filter((col) => isVisible(col)),
-    [isVisible, visibility],
+    [isVisible],
   );
 
   const colCount = 7 + visibleOptionalColumns.length;

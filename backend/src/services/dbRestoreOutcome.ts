@@ -138,12 +138,18 @@ export function classifyRestoreOutcome(
   };
 }
 
+export interface DatabaseLike {
+  prepare(sql: string): {
+    all(...params: unknown[]): unknown[];
+  };
+}
+
 /**
  * Reads the applied schema versions. Returns an empty list when the
  * `schema_migrations` table does not exist yet (fresh database), which is a
  * normal transient state rather than an error.
  */
-export function readAppliedSchemaVersions(db: any): number[] {
+export function readAppliedSchemaVersions(db: DatabaseLike): number[] {
   try {
     const rows = db
       .prepare("SELECT version FROM schema_migrations ORDER BY version")
@@ -155,7 +161,7 @@ export function readAppliedSchemaVersions(db: any): number[] {
 }
 
 export function readRestoreSnapshot(
-  db: any,
+  db: DatabaseLike,
   migrationsDir?: string,
 ): RestoreSchemaSnapshot {
   let integrityOk = true;
@@ -184,7 +190,7 @@ export function readRestoreSnapshot(
 
 /** Live database-vs-code schema signal, computed on demand. */
 export function getLiveRestoreOutcomeSignal(
-  db: any,
+  db: DatabaseLike,
   migrationsDir?: string,
 ): RestoreOutcomeSignal {
   return classifyRestoreOutcome(readRestoreSnapshot(db, migrationsDir));

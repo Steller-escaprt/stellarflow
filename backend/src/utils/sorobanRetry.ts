@@ -16,8 +16,9 @@ const RETRY_DELAYS_MS = [1000, 2000, 4000];
 
 function extractStatusCode(err: unknown): number | undefined {
   if (err && typeof err === "object") {
-    const e = err as Record<string, any>;
-    return e["status"] ?? e["response"]?.["status"] ?? e["statusCode"];
+    const e = err as Record<string, unknown>;
+    const status = e["status"] ?? (e["response"] as Record<string, unknown> | undefined)?.["status"] ?? e["statusCode"];
+    return typeof status === "number" ? status : undefined;
   }
   return undefined;
 }
@@ -33,8 +34,10 @@ function isRetryableError(err: unknown): boolean {
     return true;
   }
 
-  const msg = String(
-    err && typeof err === "object" ? (err as any).message ?? err : err,
+  const msg = (
+    err && typeof err === "object" && "message" in err
+      ? String((err as { message: unknown }).message)
+      : String(err)
   ).toLowerCase();
 
   return (

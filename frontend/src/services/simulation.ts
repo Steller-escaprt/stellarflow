@@ -5,8 +5,10 @@
  * memory byte footprints, and generates Stellar Laboratory inspection links.
  */
 
+export type SimulationOperation = 'create_stream' | 'claim' | 'cancel_stream' | 'batch_create';
+
 export interface SorobanResourceFootprint {
-  operation: 'create_stream' | 'claim' | 'cancel_stream' | 'batch_create';
+  operation: SimulationOperation;
   cpuInstructions: number;
   maxCpuInstructions: number;
   memoryBytes: number;
@@ -78,3 +80,4 @@ export function simulateStreamFootprint(
     laboratoryUrl: generateLaboratoryUrl(sampleXdr),
   };
 }
+

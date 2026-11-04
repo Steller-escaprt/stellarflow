@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { probeRpc, resolveRpcConfig } = require('../../scripts/rpc-preflight.cjs') as {
   probeRpc: (rpcUrl: string, fetchImpl?: typeof fetch) => Promise<void>;
   resolveRpcConfig: (env: Record<string, string>) => {

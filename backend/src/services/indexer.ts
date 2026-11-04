@@ -691,20 +691,33 @@ async function indexEventsWithCursorPagination(db: any, currentLedger: number, c
     let pageInserted = 0;
     let pageDeduped = 0;
 
-    db.transaction(() => {
-  for (const event of events) {
-    const result = processEvent(db, event);
-    if (result === "inserted") pageInserted++;
-    else if (result === "deduped") pageDeduped++;
+    for (const event of events) {
+      try {
+        db.transaction(() => {
+          const result = processEvent(db, event);
+          if (result === "inserted") pageInserted++;
+          else if (result === "deduped") pageDeduped++;
 
-    if (event.ledger > maxLedgerSeen) {
-      maxLedgerSeen = event.ledger;
+          if (event.ledger > maxLedgerSeen) {
+            maxLedgerSeen = event.ledger;
+          }
+        })();
+      } catch (err) {
+        logger.error(
+          { pollCycleId: currentPollCycleId, err },
+          "failed to process event — skipped corrupt payload",
+        );
+      }
     }
-  }
-})();
 
-if (pageInserted > 0) eventsIndexedTotal.inc(pageInserted);
-if (pageDeduped > 0) indexerEventsDedupedTotal.inc(pageDeduped);
+    if (pageInserted > 0) {
+      eventsIndexedTotal.inc(pageInserted);
+      totalInserted += pageInserted;
+    }
+    if (pageDeduped > 0) {
+      indexerEventsDedupedTotal.inc(pageDeduped);
+      totalDeduped += pageDeduped;
+    }
 
     if (pageDeduped > 0) {
       logger.info(

@@ -46,7 +46,18 @@ function loadMigrationSql(filePath: string): string {
   return fs.readFileSync(filePath, "utf-8");
 }
 
-function ensureSchemaMigrationsTable(db: any): void {
+export interface MigrationDatabase {
+  exec(sql: string): void;
+  prepare(sql: string): {
+    all(...params: unknown[]): unknown[];
+    get(...params: unknown[]): unknown;
+    run(...params: unknown[]): unknown;
+  };
+  transaction<T extends (...args: unknown[]) => unknown>(fn: T): (...args: Parameters<T>) => ReturnType<T>;
+  pragma(pragmaSql: string): unknown;
+}
+
+function ensureSchemaMigrationsTable(db: MigrationDatabase): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
       version     INTEGER PRIMARY KEY,
@@ -56,21 +67,21 @@ function ensureSchemaMigrationsTable(db: any): void {
   `);
 }
 
-function getAppliedVersions(db: any): Set<number> {
+function getAppliedVersions(db: MigrationDatabase): Set<number> {
   const rows = db
     .prepare("SELECT version FROM schema_migrations ORDER BY version")
     .all() as Array<{ version: number }>;
   return new Set(rows.map((row) => row.version));
 }
 
-function hasExistingSchema(db: any): boolean {
+function hasExistingSchema(db: MigrationDatabase): boolean {
   const row = db
     .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'streams'")
     .get();
   return !!row;
 }
 
-function seedBaselineMigrations(db: any, migrations: Migration[]): void {
+function seedBaselineMigrations(db: MigrationDatabase, migrations: Migration[]): void {
   const now = Math.floor(Date.now() / 1000);
   const insert = db.prepare(
     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)"
@@ -83,7 +94,7 @@ function seedBaselineMigrations(db: any, migrations: Migration[]): void {
   })();
 }
 
-function applyMigration(db: any, migration: Migration): void {
+function applyMigration(db: MigrationDatabase, migration: Migration): void {
   const upSql = loadMigrationSql(migration.upPath);
   db.transaction(() => {
     db.exec(upSql);
@@ -93,7 +104,7 @@ function applyMigration(db: any, migration: Migration): void {
   })();
 }
 
-export function runMigrations(db: any, migrationsDir?: string): void {
+export function runMigrations(db: MigrationDatabase, migrationsDir?: string): void {
   const dir = migrationsDir ?? getMigrationsDir();
   const migrations = discoverMigrations(dir);
 
@@ -113,7 +124,7 @@ export function runMigrations(db: any, migrationsDir?: string): void {
 }
 
 export function rollbackMigration(
-  db: any,
+  db: MigrationDatabase,
   version: number,
   migrationsDir?: string
 ): void {
@@ -137,7 +148,7 @@ export function rollbackMigration(
   })();
 }
 
-export function getTableColumns(db: any, table: string): string[] {
+export function getTableColumns(db: MigrationDatabase, table: string): string[] {
   const columns = db.pragma(`table_info(${table})`) as Array<{ name: string }>;
   return columns.map((column) => column.name);
 }

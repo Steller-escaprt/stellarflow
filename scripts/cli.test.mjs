@@ -38,3 +38,23 @@ test('StellarFlow CLI: parseArgs handles flags and positionals correctly', () =>
   assert.equal(flags.duration, '86400');
   assert.equal(flags.v, true);
 });
+
+test('StellarFlow CLI: executes sep7 pay command with formatted URI and QR code', () => {
+  import('node:child_process').then(({ execSync }) => {
+    const stdout = execSync('node bin/stellarflow.js sep7 pay --amount 250 --asset USDC', { encoding: 'utf8' });
+    assert.match(stdout, /SEP-0007 STELLAR PAYMENT URI GENERATOR/);
+    assert.match(stdout, /web\+stellar:pay\?destination=/);
+    assert.match(stdout, /amount=250/);
+    assert.match(stdout, /asset_code=USDC/);
+  });
+});
+
+test('StellarFlow CLI: executes events command and formats contract stream logs', () => {
+  import('node:child_process').then(({ execSync }) => {
+    const stdout = execSync('node bin/stellarflow.js events --limit 3', { encoding: 'utf8' });
+    assert.match(stdout, /SOROBAN RPC CONTRACT EVENT STREAMER \(Protocol 22\)/);
+    assert.match(stdout, /Stream\.Created/);
+    assert.match(stdout, /Stream\.Claimed/);
+  });
+});
+

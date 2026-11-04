@@ -10,7 +10,7 @@
 
 import Database from "better-sqlite3";
 
-export function up(db: any): void {
+export function up(db: InstanceType<typeof Database>): void {
   db.exec(`
     -- 1. sender lookup
     CREATE INDEX IF NOT EXISTS idx_streams_sender
@@ -29,6 +29,7 @@ export function up(db: any): void {
         ON streams(start_at);
   `);
 
+  // eslint-disable-next-line no-console
   console.log("[migration] 0002_add_stream_indexes: indexes applied.");
 }
 

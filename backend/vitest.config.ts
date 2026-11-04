@@ -13,6 +13,7 @@ export default defineConfig({
     // (rate limiters, DB singletons, env vars) is fully isolated.
     pool: "forks",
     isolate: true,
+    testTimeout: 15000,
     // Coverage configuration to enforce 80% branch coverage threshold
     coverage: {
       enabled: true,

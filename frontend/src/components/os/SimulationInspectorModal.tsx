@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   simulateStreamFootprint,
   type SorobanResourceFootprint,
+  type SimulationOperation,
 } from '../../services/simulation';
 import {
   simulateFeeBumpEnvelope,
@@ -64,14 +65,14 @@ export const SimulationInspectorModal: React.FC<SimulationInspectorModalProps> =
             <label className="text-slate-400 text-[11px] block mb-2">TARGET SMART CONTRACT OPERATION:</label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {[
-                { id: 'create_stream', label: 'create_stream' },
-                { id: 'claim', label: 'claim' },
-                { id: 'cancel_stream', label: 'cancel_stream' },
-                { id: 'batch_create', label: 'batch_create' },
+                { id: 'create_stream' as SimulationOperation, label: 'create_stream' },
+                { id: 'claim' as SimulationOperation, label: 'claim' },
+                { id: 'cancel_stream' as SimulationOperation, label: 'cancel_stream' },
+                { id: 'batch_create' as SimulationOperation, label: 'batch_create' },
               ].map((op) => (
                 <button
                   key={op.id}
-                  onClick={() => setSelectedOp(op.id as any)}
+                  onClick={() => setSelectedOp(op.id)}
                   className={`py-1.5 px-2 rounded border text-center transition-all ${
                     selectedOp === op.id
                       ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.2)]'
@@ -201,3 +202,4 @@ export const SimulationInspectorModal: React.FC<SimulationInspectorModalProps> =
     </div>
   );
 };
+

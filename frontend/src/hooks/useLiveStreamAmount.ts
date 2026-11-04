@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { Stream, StreamStatus } from "../types/stream";
 
 export interface LiveStreamAmountResult {
@@ -10,7 +10,7 @@ export interface LiveStreamAmountResult {
 }
 
 export function useLiveStreamAmount(stream: Stream): LiveStreamAmountResult {
-  const calculate = (): LiveStreamAmountResult => {
+  const calculate = useCallback((): LiveStreamAmountResult => {
     const status = stream.progress?.status || "active";
     const total = Number(stream.totalAmount) || 0;
     const duration = Number(stream.durationSeconds) || 0;
@@ -85,7 +85,14 @@ export function useLiveStreamAmount(stream: Stream): LiveStreamAmountResult {
       isCliffActive: false,
       status: "active",
     };
-  };
+  }, [
+    stream.totalAmount,
+    stream.durationSeconds,
+    stream.startAt,
+    stream.cliffSeconds,
+    stream.progress?.status,
+    stream.progress?.vestedAmount,
+  ]);
 
   const [state, setState] = useState<LiveStreamAmountResult>(calculate);
 
@@ -102,15 +109,7 @@ export function useLiveStreamAmount(stream: Stream): LiveStreamAmountResult {
     }, 100);
 
     return () => clearInterval(interval);
-  }, [
-    stream.id,
-    stream.totalAmount,
-    stream.durationSeconds,
-    stream.startAt,
-    stream.cliffSeconds,
-    stream.progress?.status,
-    stream.progress?.vestedAmount,
-  ]);
+  }, [calculate, stream.progress?.status]);
 
   return state;
 }

@@ -41,6 +41,29 @@ export function ContractWindow() {
           </div>
         </div>
 
+        {/* SEP-7 Mobile Deep Link & QR Code Card */}
+        <div className="border_ui rounded-xl p-4 bg-gradient-to-r from-blue-950/30 to-indigo-950/20 border-blue-500/30 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h4 className="font-bold text-blue-400 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                <span>📱 SEP-0007 Universal Mobile Signing & QR Bridge</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-800">
+                  SEP-7
+                </span>
+              </h4>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-sans">
+                Scan or click a standard <code className="text-blue-400">web+stellar:</code> URI to sign transactions and fund streams directly in Freighter, LOBSTR, or mobile wallets.
+              </p>
+            </div>
+            <a
+              href={`web+stellar:pay?destination=${CONTRACT_ID}&amount=100&asset_code=USDC`}
+              className="py-2 px-3.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition-all shadow-[0_0_12px_rgba(59,130,246,0.3)] shrink-0 flex items-center gap-1.5 cursor-pointer text-center justify-center no-underline"
+            >
+              <span>Open in Wallet ↗</span>
+            </a>
+          </div>
+        </div>
+
         {/* Contract Identifier Card */}
         <div className="border_ui rounded-xl p-4 bg-white/70 dark:bg-[#13151D]/90 space-y-3">
           <div className="flex items-center justify-between">

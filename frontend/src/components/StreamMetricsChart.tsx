@@ -87,7 +87,10 @@ export function StreamMetricsChart({ data, loading = false, error = null }: Stre
   };
 
   const maxIndex = Math.max(0, data.length - 1);
-  const currentRange = zoomRange || [0, maxIndex];
+  const currentRange = useMemo(
+    () => zoomRange || [0, maxIndex],
+    [zoomRange, maxIndex],
+  );
 
   const currentData = useMemo(() => {
     return data.slice(Math.max(0, currentRange[0]), Math.min(data.length, currentRange[1] + 1));

@@ -249,7 +249,7 @@ describe("POST /api/streams/:id/cancel Integration Tests", () => {
     it("returns a stable error and rolls back the stream update when event insertion fails", async () => {
       const now = Math.floor(Date.now() / 1000);
       const stream = {
-        id: "rollback-event-write",
+        id: "998877",
         sender: mockSender,
         recipient: mockRecipient,
         asset_code: "USDC",

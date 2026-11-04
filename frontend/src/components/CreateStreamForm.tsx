@@ -266,13 +266,14 @@ export function CreateStreamForm({
       }
     }
     fetchConfig();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only fetch once on mount
 
   useEffect(() => {
-    if (walletAddress && !values.sender) {
-      setValues((prev) => ({ ...prev, sender: walletAddress }));
+    if (walletAddress) {
+      setValues((prev) => (prev.sender ? prev : { ...prev, sender: walletAddress }));
     }
-  }, [walletAddress]);
+  }, [walletAddress, setValues]);
   const [touched, setTouched] = useState<
     Partial<Record<keyof FormValues, boolean>>
   >({});

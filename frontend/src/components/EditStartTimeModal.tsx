@@ -77,8 +77,9 @@ export function EditStartTimeModal({
 
   // Return focus to the trigger button when the modal closes
   useEffect(() => {
+    const triggerEl = triggerRef?.current;
     return () => {
-      triggerRef?.current?.focus();
+      triggerEl?.focus();
     };
   }, [triggerRef]);
 

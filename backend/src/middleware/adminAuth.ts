@@ -14,6 +14,7 @@ export const ADMIN_CALLER: Readonly<AdminAuthorizedCaller> = Object.freeze({
   isAdmin: true,
 });
 
+// eslint-disable-next-line no-control-regex
 const MALFORMED_KEY_PATTERN = /[\s,\x00-\x1f\x7f]/;
 
 function hasDuplicateHeader(req: Request, headerName: string): boolean {

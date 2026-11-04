@@ -393,8 +393,8 @@ describe("Indexer backfill: RPC truncating a page", () => {
     const event150 = makeStreamClaimedEvent("stream-truncated-1", 75, 150);
 
     mockGetEvents
-      .mockResolvedValueOnce({ events: [event110], cursor: "cursor-empty-page" })
-      .mockResolvedValueOnce({ events: [], cursor: "cursor-empty-page" })
+      .mockResolvedValueOnce({ events: [event110], cursor: "cursor-page-1" })
+      .mockResolvedValueOnce({ events: [], cursor: "cursor-page-2" })
       .mockResolvedValueOnce({ events: [event150], cursor: undefined });
 
     await runOnePoll(cid);
@@ -419,13 +419,13 @@ describe("Indexer backfill: RPC delaying or failing a page", () => {
 
     mockGetLatestLedger.mockResolvedValue({ sequence: 200 });
 
-    // Simulate delayed RPC response: takes 80ms to respond
+    // Simulate delayed RPC response: takes 200ms to respond
     mockGetEvents.mockImplementation(
       () =>
         new Promise((resolve) => {
           setTimeout(() => {
             resolve({ events: [makeStreamCreatedEvent("stream-slow", 150)] });
-          }, 80);
+          }, 200);
         }),
     );
 
@@ -434,12 +434,12 @@ describe("Indexer backfill: RPC delaying or failing a page", () => {
     startIndexer(20);
 
     // During the in-flight delayed request, check snapshot
-    await new Promise((r) => setTimeout(r, 30));
+    await new Promise((r) => setTimeout(r, 50));
     const snapshot = getIndexerMonitoringSnapshot();
     expect(snapshot.pollInFlight).toBe(true);
 
     // Wait until the delayed call completes and timer stops
-    await new Promise((r) => setTimeout(r, 120));
+    await new Promise((r) => setTimeout(r, 220));
     stopIndexer();
 
     // Verify exactly 1 call was completed during the slow period, no overlapping re-entrancy
