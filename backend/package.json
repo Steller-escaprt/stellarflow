@@ -1,6 +1,6 @@
 {
   "name": "stellar-flow-backend",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Backend API for StellarFlow Protocol",
   "main": "dist/index.js",
   "scripts": {
