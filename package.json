@@ -2,6 +2,9 @@
   "name": "stellar-flow",
   "version": "1.0.0",
   "description": "Real-time payment and payroll streaming protocol built on Stellar",
+  "bin": {
+    "stellarflow": "./bin/stellarflow.js"
+  },
   "private": true,
   "scripts": {
     "dev:backend": "cd backend && npm run dev",

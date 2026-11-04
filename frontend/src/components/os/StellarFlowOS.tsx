@@ -12,6 +12,7 @@ import { PlaygroundWindow } from "./PlaygroundWindow";
 import { SkillsWindow } from "./SkillsWindow";
 import { ContractWindow } from "./ContractWindow";
 import { SettingsWindow } from "./SettingsWindow";
+import { SimulationInspectorModal } from "./SimulationInspectorModal";
 import { SenderDashboard as SenderDashboardPage } from "../../pages/SenderDashboard";
 import { RecipientDashboard } from "../RecipientDashboard";
 
@@ -49,6 +50,7 @@ export function StellarFlowOS({
   const [currentTime, setCurrentTime] = useState("");
   const [currentDate, setCurrentDate] = useState("");
   const [searchCommand, setSearchCommand] = useState("");
+  const [isSimulationOpen, setIsSimulationOpen] = useState(false);
 
   // Sync initialWindow
   useEffect(() => {
@@ -397,6 +399,14 @@ export function StellarFlowOS({
                   >
                     <span>$ launch cli</span>
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsSimulationOpen(true)}
+                    className="px-3.5 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/40 hover:bg-cyan-500/20 text-xs font-bold text-cyan-700 dark:text-cyan-300 transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span>⚡ Soroban Resource Meter & XDR</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -630,6 +640,12 @@ export function StellarFlowOS({
           </div>
         </form>
       </footer>
+
+      {/* ── SOROBAN SIMULATION & XDR MODAL ── */}
+      <SimulationInspectorModal
+        isOpen={isSimulationOpen}
+        onClose={() => setIsSimulationOpen(false)}
+      />
     </div>
   );
 }

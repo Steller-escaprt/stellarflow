@@ -1,7 +1,10 @@
+import { useState } from "react";
 import { CopyableAddress } from "../CopyableAddress";
+import { SimulationInspectorModal } from "./SimulationInspectorModal";
 
 export function ContractWindow() {
   const CONTRACT_ID = "CCJW2RLIN4MQQ4DAJMMR3F5QPDA6QYTKXJMEVI3XOTDBTBCLBB553J74";
+  const [isSimulationOpen, setIsSimulationOpen] = useState(false);
 
   return (
     <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(100vh-180px)] font-mono text-xs sm:text-sm">
@@ -15,6 +18,29 @@ export function ContractWindow() {
       </div>
 
       <div className="space-y-6">
+        {/* On-Chain Resource Metering & Stellar Laboratory Bridge */}
+        <div className="border_ui rounded-xl p-4 bg-gradient-to-r from-cyan-950/30 to-purple-950/20 border-cyan-500/30 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h4 className="font-bold text-cyan-500 dark:text-cyan-400 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                <span>⚡ Soroban Resource Metering & XDR Bridge</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">
+                  PROTOCOL 22
+                </span>
+              </h4>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-sans">
+                Inspect real-time CPU instructions, memory allocations, Stroop fee metrics, and live Stellar Laboratory XDR decoders.
+              </p>
+            </div>
+            <button
+              onClick={() => setIsSimulationOpen(true)}
+              className="py-2 px-3.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs transition-all shadow-[0_0_12px_rgba(6,182,212,0.3)] shrink-0 flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>Launch Resource Meter ↗</span>
+            </button>
+          </div>
+        </div>
+
         {/* Contract Identifier Card */}
         <div className="border_ui rounded-xl p-4 bg-white/70 dark:bg-[#13151D]/90 space-y-3">
           <div className="flex items-center justify-between">
@@ -111,6 +137,11 @@ export function ContractWindow() {
           </pre>
         </div>
       </div>
+
+      <SimulationInspectorModal
+        isOpen={isSimulationOpen}
+        onClose={() => setIsSimulationOpen(false)}
+      />
     </div>
   );
 }
