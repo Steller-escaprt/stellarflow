@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
     stellarAccountIdSchema,
+    bnbAddressSchema,
     webhookRegistrationSchema,
     isStellarPublicKey,
     createStreamPayloadSchema,
@@ -161,6 +162,61 @@ describe("Webhook Registration Schema", () => {
 
         const result = webhookRegistrationSchema.safeParse(payload);
         expect(result.success).toBe(true);
+    });
+});
+
+describe("BNB Address Schema", () => {
+    it("should accept valid 0x-prefixed 20-byte hex addresses", () => {
+        const validAddresses = [
+            "0x0000000000000000000000000000000000000000",
+            "0xabcdef0123456789abcdef0123456789abcdef01",
+            "0xABCDEF0123456789ABCDEF0123456789ABCDEF01",
+            "0xAbCdEf0123456789aBcDeF0123456789AbCdEf01",
+        ];
+
+        validAddresses.forEach((addr) => {
+            const result = bnbAddressSchema.safeParse(addr);
+            expect(result.success).toBe(true);
+        });
+    });
+
+    it("should trim surrounding whitespace on valid addresses", () => {
+        const result = bnbAddressSchema.safeParse(
+            "  0xabcdef0123456789abcdef0123456789abcdef01  ",
+        );
+        expect(result.success).toBe(true);
+        if (result.success) {
+            expect(result.data).toBe("0xabcdef0123456789abcdef0123456789abcdef01");
+        }
+    });
+
+    it("should reject malformed hex characters or missing 0x prefix", () => {
+        const malformed = [
+            "abcdef0123456789abcdef0123456789abcdef01",
+            "0Xabcdef0123456789abcdef0123456789abcdef01",
+            "0xgggggg0123456789abcdef0123456789abcdef01",
+            "0xabcdef0123456789abcdef0123456789abcdef0z",
+            "0xabcdef0123456789-bcdef0123456789abcdef01",
+        ];
+
+        malformed.forEach((addr) => {
+            const result = bnbAddressSchema.safeParse(addr);
+            expect(result.success).toBe(false);
+        });
+    });
+
+    it("should reject wrong-length addresses", () => {
+        const wrongLength = [
+            "",
+            "0x",
+            "0xabcdef0123456789abcdef0123456789abcdef0",
+            "0xabcdef0123456789abcdef0123456789abcdef012",
+        ];
+
+        wrongLength.forEach((addr) => {
+            const result = bnbAddressSchema.safeParse(addr);
+            expect(result.success).toBe(false);
+        });
     });
 });
 

@@ -3,6 +3,7 @@ import { StrKey } from "@stellar/stellar-sdk";
 import { validateWebhookUrl } from "../services/webhookUrl";
 
 export const STELLAR_ACCOUNT_REGEX = /^G[A-Z2-7]{55}$/;
+export const BNB_ADDRESS_REGEX = /^0x[0-9a-fA-F]{40}$/;
 export const ASSET_CODE_REGEX = /^[A-Za-z0-9]{1,12}$/;
 export const STREAM_ID_REGEX = /^[1-9]\d*$/;
 
@@ -20,6 +21,14 @@ export const stellarAccountIdSchema = z
   .trim()
   .min(1, "Account ID is required.")
   .refine(isStellarPublicKey, "must be a valid Stellar account ID");
+
+export const bnbAddressSchema = z
+  .string()
+  .trim()
+  .regex(
+    BNB_ADDRESS_REGEX,
+    "BNB Chain address must be a 0x-prefixed 20-byte hexadecimal string.",
+  );
 
 export const assetCodeSchema = z
   .string()
